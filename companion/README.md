@@ -11,11 +11,11 @@ sidebar:
 
 ## Install
 
-Requires Node.js 20 or newer.
+Requires Node.js 20 or newer. Works on macOS and Windows (Linux without auto-start).
 
 ```bash
 npm install -g https://github.com/Juan337492/aisidebar/releases/latest/download/aisidebar-companion.tgz
-aisidebar-companion install     # macOS: start now and at every login
+aisidebar-companion install     # macOS & Windows: start now and at every login
 # or run it in a terminal instead:
 aisidebar-companion start
 ```
@@ -29,7 +29,7 @@ Other commands: `aisidebar-companion token` (show the URL and token for manual s
 ## Privacy and security
 
 - Listens on `127.0.0.1` only. Requests from web pages are rejected, and every request needs a pairing token that
-  you approve on your Mac.
+  you approve on your computer.
 - Never sees your passwords. Sign-in happens on Anthropic's and Google's own pages, and the CLIs keep their own
   credentials.
 - Runs the CLIs in an empty folder (`~/.aisidebar/workspace`) with no file or shell tools, so chats can't touch

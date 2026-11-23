@@ -14,7 +14,7 @@ import { SettingsPanel } from "./Settings";
 import { IconButton, ProviderMark, timeAgo } from "./ui";
 import { ProviderAuth, primaryBtn, secondaryBtn } from "./ProviderAuth";
 import { usePairing } from "@/lib/usePairing";
-import { CopyCommand, INSTALL_CMD, SETUP_URL } from "./CopyCommand";
+import { ALLOW_BUTTON, CopyCommand, INSTALL_CMD, IS_WINDOWS, SETUP_URL, WINDOWS_SETUP_URL } from "./CopyCommand";
 import { isProviderEnabled, type Settings } from "@/lib/settings";
 import type { ProvidersState } from "@/lib/useProviders";
 
@@ -231,8 +231,18 @@ function SetupCard({
       <div className={card}>
         <p className="font-medium">Install the companion</p>
         <p className="text-xs text-muted">
-          AI Sidebar needs a small free app on your computer to reach your Claude and Google accounts. Paste this into
-          Terminal, then click Try again:
+          AI Sidebar needs a small free app on your computer to reach your Claude and Google accounts.
+          {IS_WINDOWS ? (
+            <>
+              {" "}
+              <a href={WINDOWS_SETUP_URL} className="text-accent underline">
+                Download the setup file
+              </a>{" "}
+              and double-click it, or paste this into PowerShell. Then click Try again:
+            </>
+          ) : (
+            " Paste this into Terminal, then click Try again:"
+          )}
         </p>
         <CopyCommand text={INSTALL_CMD} />
         <a href={SETUP_URL} target="_blank" rel="noreferrer" className="block text-xs text-accent underline">
@@ -251,7 +261,7 @@ function SetupCard({
         <p className="font-medium">Connect to this computer</p>
         <p className="text-xs text-muted">
           {pairing.waiting
-            ? "Look for the “AI Sidebar” popup on your Mac and click Allow."
+            ? `Look for the “AI Sidebar” popup on your computer and click ${ALLOW_BUTTON}.`
             : "AI Sidebar uses the companion app to reach your Claude and Google accounts."}
         </p>
         <button type="button" className={primaryBtn} disabled={pairing.waiting} onClick={() => pairing.connect()}>

@@ -63,7 +63,7 @@ elif [ "$(uname)" = "Darwin" ]; then
   "$BIN" install >/dev/null
   ok "Running now, and it will start automatically when you log in."
 else
-  warn "Auto-start is macOS-only for now. Keep this running in a terminal:"
+  warn "Auto-start isn't set up on Linux. Keep this running (e.g. from your startup apps):"
   echo "      $BIN start"
 fi
 

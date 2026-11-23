@@ -1,32 +1,71 @@
 import { spawn, execFile } from "node:child_process";
 import { createInterface } from "node:readline";
-import { accessSync, constants } from "node:fs";
-import { delimiter, join } from "node:path";
+import { accessSync, constants, readFileSync, statSync } from "node:fs";
+import { basename, delimiter, dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { WORKSPACE_DIR } from "./config.ts";
 
-/** PATH plus the usual places CLIs get installed, since launchd starts with a bare PATH. */
+export const IS_WINDOWS = process.platform === "win32";
+
+/** PATH plus the usual places CLIs get installed, since auto-start runs with a bare PATH. */
 export function searchPath(): string[] {
-  const extra = [
-    join(homedir(), ".local", "bin"),
-    join(homedir(), ".claude", "local"),
-    "/opt/homebrew/bin",
-    "/usr/local/bin",
-  ];
-  return [...(process.env.PATH ?? "").split(delimiter), ...extra].filter(Boolean);
+  const home = homedir();
+  const extra = IS_WINDOWS
+    ? [
+        join(home, ".local", "bin"), // Claude Code native installer
+        process.env.APPDATA && join(process.env.APPDATA, "npm"), // npm global installs
+        process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "Programs", "Antigravity", "bin"),
+        process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "Microsoft", "WinGet", "Links"),
+      ]
+    : [join(home, ".local", "bin"), join(home, ".claude", "local"), "/opt/homebrew/bin", "/usr/local/bin"];
+  return [...(process.env.PATH ?? "").split(delimiter), ...extra].filter((d): d is string => !!d);
+}
+
+/** Windows looks for name.exe / name.cmd etc.; prefer real .exe files over batch shims. */
+function candidates(name: string): string[] {
+  if (!IS_WINDOWS) return [name];
+  const exts = (process.env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").toLowerCase().split(";").filter(Boolean);
+  const ordered = [".exe", ...exts.filter((e) => e !== ".exe")];
+  return ordered.map((e) => name + e);
+}
+
+export function isExecutable(p: string): boolean {
+  try {
+    if (!statSync(p).isFile()) return false;
+    accessSync(p, IS_WINDOWS ? constants.F_OK : constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function which(name: string): string | undefined {
   for (const dir of searchPath()) {
-    const p = join(dir, name);
-    try {
-      accessSync(p, constants.X_OK);
-      return p;
-    } catch {
-      // keep looking
+    for (const file of candidates(name)) {
+      const p = join(dir, file);
+      if (isExecutable(p)) return p;
     }
   }
   return undefined;
+}
+
+/**
+ * How to launch `bin` without a shell. Windows can't start .cmd/.bat files without cmd.exe, and running chat
+ * text through cmd.exe would be unsafe, so npm's .cmd shims are resolved to `node <script>` instead.
+ */
+export function spawnTarget(bin: string): { cmd: string; args: string[] } {
+  if (!IS_WINDOWS || !/\.(cmd|bat)$/i.test(bin)) return { cmd: bin, args: [] };
+  const script = parseCmdShim(readFileSync(bin, "utf8"));
+  if (script) return { cmd: process.execPath, args: [join(dirname(bin), script)] };
+  throw new Error(
+    `${basename(bin)} is a batch file that AI Sidebar can't run safely. Install the regular (.exe) version of this tool.`,
+  );
+}
+
+/** Extracts the script path from an npm-generated .cmd shim, e.g. `"%dp0%\node_modules\pkg\cli.js" %*`. */
+export function parseCmdShim(text: string): string | undefined {
+  const m = text.match(/"%~?dp0%?\\?([^"%]+?\.(?:c|m)?js)"/i);
+  return m?.[1];
 }
 
 export function childEnv(): NodeJS.ProcessEnv {
@@ -39,10 +78,16 @@ export function run(
   timeoutMs = 20_000,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
+    let target: { cmd: string; args: string[] };
+    try {
+      target = spawnTarget(bin);
+    } catch (e) {
+      return resolve({ code: 1, stdout: "", stderr: (e as Error).message });
+    }
     execFile(
-      bin,
-      args,
-      { cwd: WORKSPACE_DIR, env: childEnv(), timeout: timeoutMs, maxBuffer: 8 * 1024 * 1024 },
+      target.cmd,
+      [...target.args, ...args],
+      { cwd: WORKSPACE_DIR, env: childEnv(), timeout: timeoutMs, maxBuffer: 8 * 1024 * 1024, windowsHide: true },
       (err, stdout, stderr) => {
         const code = err ? (typeof err.code === "number" ? err.code : 1) : 0;
         resolve({ code, stdout: String(stdout), stderr: String(stderr) });
@@ -59,17 +104,25 @@ export async function* streamLines(
   bin: string,
   args: string[],
   signal: AbortSignal,
+  /** Written to the CLI's stdin, then closed. Keeps long prompts off the command line (Windows caps it at ~32K). */
+  input?: string,
 ): AsyncGenerator<string> {
-  const child = spawn(bin, args, {
+  const target = spawnTarget(bin);
+  const child = spawn(target.cmd, [...target.args, ...args], {
     cwd: WORKSPACE_DIR,
     env: childEnv(),
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+    windowsHide: true,
   });
+  if (input !== undefined && child.stdin) {
+    child.stdin.on("error", () => {}); // the CLI may exit before reading everything
+    child.stdin.end(input);
+  }
   const kill = () => child.kill("SIGTERM");
   signal.addEventListener("abort", kill, { once: true });
 
   let stderr = "";
-  child.stderr.on("data", (d) => {
+  child.stderr!.on("data", (d) => {
     stderr = (stderr + d).slice(-4000);
   });
   const exited = new Promise<number>((resolve) => {
@@ -82,7 +135,7 @@ export async function* streamLines(
 
   let produced = false;
   try {
-    const rl = createInterface({ input: child.stdout, crlfDelay: Infinity });
+    const rl = createInterface({ input: child.stdout!, crlfDelay: Infinity });
     for await (const line of rl) {
       if (!line.trim()) continue;
       produced = true;
@@ -113,7 +166,13 @@ const URL_RE = /https:\/\/[^\s"'<>)\]]+/;
  * The CLI opens the official page itself; it never shows us the user's password.
  */
 export function watchLogin(bin: string, args: string[], timeoutMs = 10 * 60_000) {
-  const child = spawn(bin, args, { cwd: WORKSPACE_DIR, env: childEnv(), stdio: ["pipe", "pipe", "pipe"] });
+  const target = spawnTarget(bin);
+  const child = spawn(target.cmd, [...target.args, ...args], {
+    cwd: WORKSPACE_DIR,
+    env: childEnv(),
+    stdio: ["pipe", "pipe", "pipe"],
+    windowsHide: true,
+  });
   let urlCb: ((u: string) => void) | undefined;
   let seenUrl: string | undefined;
   let tail = "";

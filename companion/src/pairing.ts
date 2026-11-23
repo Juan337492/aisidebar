@@ -15,6 +15,7 @@ function osa(s: string) {
  * Resolves true only if they click Allow.
  */
 export function askToPair(origin: string): Promise<boolean> {
+  if (process.platform === "win32") return askWindows(origin);
   if (process.platform !== "darwin") return Promise.reject(new Error("unsupported"));
   const msg =
     `${browserName(origin)} wants to connect the AI Sidebar extension to this computer's Claude and Gemini sign-ins.\n\n` +
@@ -32,5 +33,31 @@ export function askToPair(origin: string): Promise<boolean> {
       console.log(`Pairing request from ${origin}: ${answer === "Allow" ? "allowed" : answer === "timeout" ? "timed out" : "denied"}`);
       resolve(!err && answer === "Allow");
     });
+  });
+}
+
+/** Windows: a topmost Yes/No message box via PowerShell. The text travels in an env var, never in the command. */
+function askWindows(origin: string): Promise<boolean> {
+  const msg =
+    `${browserName(origin)} wants to connect the AI Sidebar extension to this computer's Claude and Gemini sign-ins.\n\n` +
+    `Extension: ${origin}\n\nOnly click Yes if you just clicked Connect in AI Sidebar.`;
+  const ps = [
+    "Add-Type -AssemblyName System.Windows.Forms",
+    "$owner = New-Object System.Windows.Forms.Form -Property @{ TopMost = $true; ShowInTaskbar = $false }",
+    "$r = [System.Windows.Forms.MessageBox]::Show($owner, $env:AISIDEBAR_PAIR_MSG, 'AI Sidebar', 'YesNo', 'Warning', 'Button2')",
+    "Write-Output $r",
+  ].join("; ");
+  return new Promise((resolve) => {
+    execFile(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", ps],
+      { timeout: 100_000, windowsHide: false, env: { ...process.env, AISIDEBAR_PAIR_MSG: msg } },
+      (err, stdout, stderr) => {
+        const answer = String(stdout).trim();
+        if (err) console.error("Pairing dialog failed:", String(stderr).trim() || err.message);
+        console.log(`Pairing request from ${origin}: ${answer === "Yes" ? "allowed" : "denied"}`);
+        resolve(!err && answer === "Yes");
+      },
+    );
   });
 }

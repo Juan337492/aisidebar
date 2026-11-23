@@ -8,7 +8,7 @@ import type { ProviderStatus } from "@/lib/types";
 import { EFFORT_LABELS, ProviderMark, StatusDot, Toggle, timeAgo } from "./ui";
 import { ProviderAuth, primaryBtn, secondaryBtn } from "./ProviderAuth";
 import { usePairing } from "@/lib/usePairing";
-import { CopyCommand, INSTALL_CMD, SETUP_URL } from "./CopyCommand";
+import { ALLOW_BUTTON, CopyCommand, INSTALL_APP, INSTALL_CMD, IS_WINDOWS, SETUP_URL, WINDOWS_SETUP_URL } from "./CopyCommand";
 
 function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
@@ -70,7 +70,18 @@ function Companion({ settings, update, state }: { settings: S; update: (p: Parti
         </p>
         {unreachable && (
           <div className="space-y-2">
-            <p className="text-xs text-muted">Install and start it by pasting this into Terminal:</p>
+            <p className="text-xs text-muted">
+              {IS_WINDOWS ? (
+                <>
+                  <a href={WINDOWS_SETUP_URL} className="text-accent underline">
+                    Download the setup file
+                  </a>{" "}
+                  and double-click it, or paste this into PowerShell:
+                </>
+              ) : (
+                <>Install and start it by pasting this into {INSTALL_APP}:</>
+              )}
+            </p>
             <CopyCommand text={INSTALL_CMD} />
             <a href={SETUP_URL} target="_blank" rel="noreferrer" className="block text-xs text-accent underline">
               Setup guide
@@ -83,7 +94,7 @@ function Companion({ settings, update, state }: { settings: S; update: (p: Parti
               {pairing.waiting ? "Waiting for approval…" : "Connect"}
             </button>
             {pairing.waiting && (
-              <p className="text-xs text-muted">Look for the “AI Sidebar” popup on your Mac and click Allow.</p>
+              <p className="text-xs text-muted">Look for the “AI Sidebar” popup on your computer and click {ALLOW_BUTTON}.</p>
             )}
           </div>
         )}

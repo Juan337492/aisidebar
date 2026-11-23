@@ -1,11 +1,17 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { VERSION, WORKSPACE_DIR } from "./config.ts";
-import { childEnv, stripAnsi } from "./process.ts";
+import { childEnv, spawnTarget, stripAnsi } from "./process.ts";
 
 /** Minimal Agent Client Protocol (JSON-RPC over stdio) client — enough for sign-in and sign-out. */
 export function startAcp(bin: string) {
-  const child = spawn(bin, ["acp", "--disable-telemetry"], { cwd: WORKSPACE_DIR, env: childEnv(), stdio: ["pipe", "pipe", "pipe"] });
+  const target = spawnTarget(bin);
+  const child = spawn(target.cmd, [...target.args, "acp", "--disable-telemetry"], {
+    cwd: WORKSPACE_DIR,
+    env: childEnv(),
+    stdio: ["pipe", "pipe", "pipe"],
+    windowsHide: true,
+  });
   let nextId = 1;
   const pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
   const lineListeners: ((line: string) => void)[] = [];
