@@ -23,7 +23,7 @@ zip, run `npm run zip:firefox -w extension` (output: `extension/.output/ai-sideb
 ## What's in the archive
 
 - `extension/` is the add-on (sidebar, settings page, background script).
-- `companion/` is a separate local helper app (published on npm as `aisidebar-companion`). It is **not** part of the
+- `companion/` is a separate local helper app (distributed as a GitHub Release file). It is **not** part of the
   add-on. It's included only because the repository is an npm workspace and `npm ci` needs it.
 
 ## Notes for review

@@ -46,7 +46,7 @@ switch (cmd) {
     if (script.includes(`${"/"}_npx${"/"}`)) {
       console.error(
         "npx runs from a temporary folder that can be deleted, so auto-start would break.\n" +
-          "Install it permanently first, then run install again:\n\n  npm install -g aisidebar-companion\n  aisidebar-companion install\n",
+          "Install it permanently first, then run install again:\n\n  npm install -g https://github.com/Juan337492/aisidebar/releases/latest/download/aisidebar-companion.tgz\n  aisidebar-companion install\n",
       );
       process.exit(1);
     }

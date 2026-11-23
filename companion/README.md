@@ -14,7 +14,7 @@ sidebar:
 Requires Node.js 20 or newer.
 
 ```bash
-npm install -g aisidebar-companion
+npm install -g https://github.com/Juan337492/aisidebar/releases/latest/download/aisidebar-companion.tgz
 aisidebar-companion install     # macOS: start now and at every login
 # or run it in a terminal instead:
 aisidebar-companion start

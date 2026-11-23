@@ -3,10 +3,9 @@
 ## First release (by hand, in the browser)
 
 1. Create a developer account at https://addons.mozilla.org/developers/ and accept the Developer Agreement.
-2. Publish the companion so users can install it:
+2. Publish the companion so users can install it (uses your GitHub login, with no npm account needed):
    ```bash
-   npm login              # once
-   npm run publish:companion
+   npm run release:companion
    ```
 3. Build the upload files:
    ```bash
@@ -35,7 +34,7 @@
    npm run submit:firefox
    ```
 
-If the companion changed, bump `version` in `companion/package.json` and run `npm run publish:companion`.
+If the companion changed, bump `version` in `companion/package.json` and run `npm run release:companion`.
 
 The add-on ID `{b3447934-d85a-43db-8f54-81bd4f331a8d}` is permanent. Never change it, or Firefox will treat the
 upload as a different add-on.

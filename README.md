@@ -21,7 +21,7 @@ which are already signed in to your accounts. The extension only talks to that c
    - [Antigravity](https://antigravity.google/download) for Gemini (Google account)
 3. **Install the companion** (needs [Node.js](https://nodejs.org) 20+):
    ```bash
-   npm install -g aisidebar-companion
+   npm install -g https://github.com/Juan337492/aisidebar/releases/latest/download/aisidebar-companion.tgz
    aisidebar-companion install     # macOS: start now and at every login
    ```
    On Windows or Linux, run `aisidebar-companion start` instead and keep it open.
@@ -75,7 +75,8 @@ pick `extension/.output/chrome-mv3`. **Firefox:** open `about:debugging`, click 
 
 ### Releasing
 
-- **Companion:** `npm publish -w companion` (builds first).
+- **Companion:** bump `version` in `companion/package.json`, then `npm run release:companion`. This builds it and
+  uploads `aisidebar-companion.tgz` to a new GitHub Release, which the install command always fetches as "latest".
 - **Firefox:** `npm run zip:firefox`, then upload `extension/.output/ai-sidebar-<version>-firefox.zip` and the
   `-sources.zip` on addons.mozilla.org, or run `npm run submit:firefox` (see `docs/amo/`). Bump `version` in
   `extension/package.json` before each release.

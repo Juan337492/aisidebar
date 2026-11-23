@@ -28,7 +28,7 @@ Sign in with your Claude account (Pro or Max) or your Google account. Sign-in ha
 **How it works**
 AI Sidebar uses a small free companion app on your computer. The app runs the official Claude Code and Antigravity tools, which are signed in to your accounts. Install it once:
 
-npm install -g aisidebar-companion && aisidebar-companion install
+npm install -g https://github.com/Juan337492/aisidebar/releases/latest/download/aisidebar-companion.tgz && aisidebar-companion install
 
 Then click Connect in the sidebar and approve it on your computer. Full setup guide: https://github.com/Juan337492/aisidebar#setup
 
@@ -60,9 +60,9 @@ Paste the contents of `docs/amo/PRIVACY.md`.
 Firefox for desktop only. Leave Firefox for Android unchecked, because Android has no sidebar.
 
 ## Notes to reviewer
-AI Sidebar is a sidebar chat UI. It talks only to a companion app on the user's own computer at http://127.0.0.1:8765 (source in `companion/`, published on npm as `aisidebar-companion`). The companion runs the official Claude Code and Antigravity CLIs, which the user signs in to on Anthropic's and Google's own pages. The extension never handles credentials.
+AI Sidebar is a sidebar chat UI. It talks only to a companion app on the user's own computer at http://127.0.0.1:8765 (source in `companion/`, distributed as a GitHub Release file). The companion runs the official Claude Code and Antigravity CLIs, which the user signs in to on Anthropic's and Google's own pages. The extension never handles credentials.
 
-To test without installing anything: the sidebar loads and shows a "Install the companion" card. With the companion: `npm install -g aisidebar-companion && aisidebar-companion start`, then click Connect (macOS shows an approval dialog), or paste the token from `aisidebar-companion token` under Settings → Manual setup. Signing in needs a Claude or Google account.
+To test without installing anything: the sidebar loads and shows a "Install the companion" card. With the companion: `npm install -g https://github.com/Juan337492/aisidebar/releases/latest/download/aisidebar-companion.tgz && aisidebar-companion start`, then click Connect (macOS shows an approval dialog), or paste the token from `aisidebar-companion token` under Settings → Manual setup. Signing in needs a Claude or Google account.
 
 Permissions:
 - `<all_urls>` is optional and requested only when the user turns on "Use page", to read the current tab's text.
