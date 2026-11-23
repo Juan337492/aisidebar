@@ -6,7 +6,7 @@ Copy these into the AMO submission form.
 AI Sidebar
 
 ## Add-on URL (slug)
-ai-sidebar-chat
+ai-sidebar-assistant
 
 ## Summary (250 characters max)
 Chat with Claude and Gemini in your sidebar using your own Claude and Google accounts, with no API keys. Summarize pages, explain selected text, and keep your place while you read. Requires the free AI Sidebar companion app.
@@ -40,8 +40,7 @@ Requires: macOS (Windows and Linux supported with manual setup), Node.js 20+, Cl
 AI Sidebar is an independent project and is not affiliated with or endorsed by Anthropic or Google. Claude and Gemini are trademarks of their respective owners.
 
 ## Categories (Firefox)
-- Other
-- Search Tools
+- Search Tools (AMO doesn't allow "Other" together with another category)
 
 ## Tags
 ai, sidebar, claude, gemini, summarize, productivity

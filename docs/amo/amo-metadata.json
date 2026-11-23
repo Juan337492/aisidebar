@@ -1,8 +1,7 @@
 {
-  "slug": "ai-sidebar-chat",
+  "slug": "ai-sidebar-assistant",
   "categories": [
-    "search-tools",
-    "other"
+    "search-tools"
   ],
   "summary": {
     "en-US": "Chat with Claude and Gemini in your sidebar using your own Claude and Google accounts, with no API keys. Summarize pages, explain selected text, and keep your place while you read. Requires the free AI Sidebar companion app."
