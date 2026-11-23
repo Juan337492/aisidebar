@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 
-export const INSTALL_CMD = "npm install -g https://github.com/Juan337492/aisidebar/releases/latest/download/aisidebar-companion.tgz && aisidebar-companion install";
-export const SETUP_URL = "https://github.com/Juan337492/aisidebar#setup";
+export const INSTALL_CMD = "curl -fsSL https://raw.githubusercontent.com/Juan337492/aisidebar/main/install.sh | bash";
+export const SETUP_URL = "https://github.com/Juan337492/aisidebar#install";
 
 /** A terminal command with a copy button. */
 export function CopyCommand({ text }: { text: string }) {

@@ -70,7 +70,7 @@ function Companion({ settings, update, state }: { settings: S; update: (p: Parti
         </p>
         {unreachable && (
           <div className="space-y-2">
-            <p className="text-xs text-muted">Install and start it from a terminal (needs Node.js):</p>
+            <p className="text-xs text-muted">Install and start it by pasting this into Terminal:</p>
             <CopyCommand text={INSTALL_CMD} />
             <a href={SETUP_URL} target="_blank" rel="noreferrer" className="block text-xs text-accent underline">
               Setup guide

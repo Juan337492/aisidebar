@@ -2,32 +2,66 @@
 
 # AI Sidebar
 
-A browser sidebar for **Chrome and Firefox** that chats with **Claude** and **Gemini** using your existing
-subscriptions (Claude Pro/Max, and your Google account through Antigravity). It doesn't need API keys.
+Chat with **Claude** and **Gemini** in a sidebar next to any web page, in **Chrome or Firefox**, using the accounts
+you already have (Claude Pro/Max, or your Google account). No API keys.
+
+![AI Sidebar summarizing a page](docs/amo/screenshots/1-summarize-page.png)
+
+## Install
+
+**You need:** a Mac, and [Claude Code](https://claude.com/product/claude-code) (for Claude) and/or
+[Antigravity](https://antigravity.google/download) (for Gemini).
+
+### 1. Set up the companion app
+
+Paste this into **Terminal**:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Juan337492/aisidebar/main/install.sh | bash
+```
+
+This installs a small helper app and starts it automatically at login. The helper is what lets the sidebar reach your
+Claude and Google accounts. It also checks that Node.js, Claude Code and Antigravity are installed, and tells you what's
+missing. ([Read the script first](install.sh) if you like.)
+
+### 2. Add the extension
+
+Download it from the **[latest release](https://github.com/Juan337492/aisidebar/releases/latest)**:
+
+- **Chrome, Edge, Brave or Arc:** download **[ai-sidebar-chrome.zip](https://github.com/Juan337492/aisidebar/releases/latest/download/ai-sidebar-chrome.zip)**
+  and unzip it. Go to `chrome://extensions`, turn on **Developer mode** (top right), click **Load unpacked**, and
+  choose the unzipped folder.
+- **Firefox:** download **[ai-sidebar-firefox.zip](https://github.com/Juan337492/aisidebar/releases/latest/download/ai-sidebar-firefox.zip)**.
+  Go to `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…** and choose the zip. Firefox removes
+  it when it restarts. When a signed `ai-sidebar-firefox.xpi` is listed on the release page, use that instead for a
+  permanent install: `about:addons` → ⚙️ → **Install Add-on From File…**
+
+### 3. Connect and sign in
+
+Click the AI Sidebar toolbar icon (or press **Alt+Shift+A**), then:
+1. Click **Connect**, then click **Allow** in the popup on your Mac.
+2. Click **Sign in with Claude** or **Sign in with Google**, and log in on their official page.
+
+That's it. Try **Use page** to ask about the page you're on, or right-click selected text → **Explain**.
+
+<details>
+<summary>Windows or Linux</summary>
+
+The installer works, but auto-start is macOS-only. Keep `aisidebar-companion start` running in a terminal, and in the
+sidebar use **Settings → Manual setup** with the token from `aisidebar-companion token`.
+</details>
+
+<details>
+<summary>How it works</summary>
 
 ```
 Browser extension (sidebar)  ──HTTP + token──▶  Companion (127.0.0.1:8765)  ──▶  claude CLI        (Claude subscription)
                                                                               └─▶  antigravity CLI   (Google account)
 ```
 
-Browsers don't let extensions start programs, so a small **companion** app on your Mac runs the official CLIs,
-which are already signed in to your accounts. The extension only talks to that companion.
-
-## Setup
-
-1. **Install the extension** from Firefox Add-ons (or see [Development](#development) to load it yourself).
-2. **Install the tools you want to use:**
-   - [Claude Code](https://claude.com/product/claude-code) for Claude (Pro/Max subscription)
-   - [Antigravity](https://antigravity.google/download) for Gemini (Google account)
-3. **Install the companion** (needs [Node.js](https://nodejs.org) 20+):
-   ```bash
-   npm install -g https://github.com/Juan337492/aisidebar/releases/latest/download/aisidebar-companion.tgz
-   aisidebar-companion install     # macOS: start now and at every login
-   ```
-   On Windows or Linux, run `aisidebar-companion start` instead and keep it open.
-4. **Connect:** open the sidebar (toolbar icon or **Alt+Shift+A**), click **Connect**, and click **Allow** in the
-   popup. On Windows or Linux, paste the token from `aisidebar-companion token` under Settings → Manual setup.
-5. **Sign in** with the Sign in buttons.
+Browsers don't let extensions start programs, so the companion runs the official CLIs, which are already signed in to
+your accounts. The extension only talks to the companion on your own computer.
+</details>
 
 ## Signing in
 
@@ -75,11 +109,10 @@ pick `extension/.output/chrome-mv3`. **Firefox:** open `about:debugging`, click 
 
 ### Releasing
 
-- **Companion:** bump `version` in `companion/package.json`, then `npm run release:companion`. This builds it and
-  uploads `aisidebar-companion.tgz` to a new GitHub Release, which the install command always fetches as "latest".
-- **Firefox:** `npm run zip:firefox`, then upload `extension/.output/ai-sidebar-<version>-firefox.zip` and the
-  `-sources.zip` on addons.mozilla.org, or run `npm run submit:firefox` (see `docs/amo/`). Bump `version` in
-  `extension/package.json` before each release.
+Bump `version` in `extension/package.json` (and `companion/package.json` if it changed), then run `npm run release`.
+That builds everything and publishes a GitHub Release with `aisidebar-companion.tgz`, `ai-sidebar-chrome.zip` and
+`ai-sidebar-firefox.zip`, plus `ai-sidebar-firefox.xpi` if a Mozilla-signed build is in `extension/.output/signed/`
+(make one with `web-ext sign --channel unlisted`). The download links and `install.sh` always use the latest release.
 
 ## Layout
 
