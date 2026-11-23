@@ -1,0 +1,20 @@
+{
+  "name": "aisidebar-companion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local helper that lets the AI Sidebar extension use your Claude and Google subscriptions through their CLIs.",
+  "bin": { "aisidebar-companion": "src/cli.ts" },
+  "engines": { "node": ">=23.6" },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/cli.ts start",
+    "token": "node --disable-warning=ExperimentalWarning src/cli.ts token",
+    "install-service": "node --disable-warning=ExperimentalWarning src/cli.ts install",
+    "uninstall-service": "node --disable-warning=ExperimentalWarning src/cli.ts uninstall",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.8.0"
+  }
+}

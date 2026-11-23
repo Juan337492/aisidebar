@@ -1,0 +1,19 @@
+{
+  "name": "aisidebar",
+  "private": true,
+  "workspaces": [
+    "extension",
+    "companion"
+  ],
+  "scripts": {
+    "companion": "npm run start -w companion",
+    "dev": "npm run dev -w extension",
+    "dev:firefox": "npm run dev:firefox -w extension",
+    "build": "npm run build -w extension && npm run build:firefox -w extension",
+    "zip": "npm run zip -w extension && npm run zip:firefox -w extension",
+    "typecheck": "npm run typecheck -w extension && npm run typecheck -w companion",
+    "companion:token": "npm run token -w companion",
+    "companion:install": "npm run install-service -w companion",
+    "companion:uninstall": "npm run uninstall-service -w companion"
+  }
+}
