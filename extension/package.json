@@ -11,7 +11,8 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "typecheck": "wxt prepare && tsc --noEmit",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "submit:firefox": "wxt zip -b firefox && wxt submit --firefox-compatibility firefox --firefox-zip .output/ai-sidebar-$npm_package_version-firefox.zip --firefox-sources-zip .output/ai-sidebar-$npm_package_version-sources.zip"
   },
   "dependencies": {
     "lucide-react": "^0.460.0",
@@ -29,5 +30,6 @@
     "typescript": "^5.8.0",
     "web-ext": "^10.8.0",
     "wxt": "^0.21.0"
-  }
+  },
+  "license": "MIT"
 }

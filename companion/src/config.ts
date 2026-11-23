@@ -3,6 +3,9 @@ import { mkdirSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+/** Read from package.json, which sits one level above both src/ and dist/. */
+export const VERSION: string = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
+
 export const HOME_DIR = process.env.AISIDEBAR_HOME ?? join(homedir(), ".aisidebar");
 export const CONFIG_PATH = join(HOME_DIR, "config.json");
 /** Empty working directory the CLIs run in, so they never touch your projects. */
