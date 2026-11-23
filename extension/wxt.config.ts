@@ -6,9 +6,16 @@ export default defineConfig({
   imports: false,
   manifestVersion: 3,
   vite: () => ({ plugins: [tailwindcss()] }),
+  zip: {
+    name: "ai-sidebar",
+    // Mozilla rebuilds the add-on from source, so ship the whole workspace (root lockfile included).
+    sourcesRoot: "..",
+    excludeSources: ["**/node_modules/**", "**/.output/**", "**/.wxt/**", "**/dist/**", "**/*.tgz", "**/.env*", "docs/amo/screenshots/**"],
+  },
   manifest: ({ browser }) => ({
     name: "AI Sidebar",
-    description: "Chat with Claude and Gemini next to any page, using your own subscriptions.",
+    description: "Chat with Claude and Gemini next to any page, using your own Claude and Google sign-ins.",
+    homepage_url: "https://github.com/Juan337492/aisidebar",
     permissions: ["storage", "tabs", "scripting", "contextMenus", "activeTab"],
     // The local companion app. Page reading asks for <all_urls> only when you first use it.
     host_permissions: ["http://127.0.0.1/*", "http://localhost/*"],
@@ -21,11 +28,16 @@ export default defineConfig({
     ...(browser === "firefox"
       ? { browser_specific_settings: {
           gecko: {
-            id: "aisidebar@local",
-            strict_min_version: "128.0",
-            // Nothing leaves your machine except the chats you send to your own providers.
-            data_collection_permissions: { required: ["none"] },
+            // Permanent AMO add-on ID. Never change it after the first upload.
+            id: "{b3447934-d85a-43db-8f54-81bd4f331a8d}",
+            // First version that understands data_collection_permissions.
+            strict_min_version: "140.0",
+            // Messages, and page text when you use "Use page" or the right-click menu, are sent through the local
+            // companion to the AI provider you chose (Anthropic or Google). Nothing is sent to the developer.
+            data_collection_permissions: { required: ["websiteContent"] },
           },
+          // Desktop only in practice (Android has no sidebar); declared so the data permissions key validates.
+          gecko_android: { strict_min_version: "142.0" },
         } }
       : {}),
   }),

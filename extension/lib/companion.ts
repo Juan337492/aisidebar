@@ -24,7 +24,7 @@ async function call(s: Settings, path: string, init: RequestInit = {}): Promise<
   } catch (e) {
     if ((e as Error).name === "AbortError") throw e;
     throw new CompanionError(
-      `Can't reach the companion at ${base(s)}. Start it with \`npm run companion\` in the aisidebar folder.`,
+      `Can't reach the companion at ${base(s)}. Make sure it's installed and running.`,
       "unreachable",
     );
   }
@@ -75,7 +75,7 @@ export async function pair(companionUrl: string): Promise<string> {
     res = await fetch(companionUrl.replace(/\/+$/, "") + "/pair", { method: "POST" });
   } catch {
     throw new CompanionError(
-      `Can't reach the companion at ${companionUrl}. Start it with \`npm run companion\` in the aisidebar folder.`,
+      `Can't reach the companion at ${companionUrl}. Make sure it's installed and running.`,
       "unreachable",
     );
   }

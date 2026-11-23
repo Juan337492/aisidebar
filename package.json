@@ -14,6 +14,9 @@
     "typecheck": "npm run typecheck -w extension && npm run typecheck -w companion",
     "companion:token": "npm run token -w companion",
     "companion:install": "npm run install-service -w companion",
-    "companion:uninstall": "npm run uninstall-service -w companion"
+    "companion:uninstall": "npm run uninstall-service -w companion",
+    "zip:firefox": "npm run zip:firefox -w extension",
+    "submit:firefox": "npm run submit:firefox -w extension",
+    "publish:companion": "npm publish -w companion"
   }
 }

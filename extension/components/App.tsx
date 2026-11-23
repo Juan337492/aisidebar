@@ -14,6 +14,7 @@ import { SettingsPanel } from "./Settings";
 import { IconButton, ProviderMark, timeAgo } from "./ui";
 import { ProviderAuth, primaryBtn, secondaryBtn } from "./ProviderAuth";
 import { usePairing } from "@/lib/usePairing";
+import { CopyCommand, INSTALL_CMD, SETUP_URL } from "./CopyCommand";
 import { isProviderEnabled, type Settings } from "@/lib/settings";
 import type { ProvidersState } from "@/lib/useProviders";
 
@@ -228,10 +229,15 @@ function SetupCard({
   if (error?.kind === "unreachable") {
     return (
       <div className={card}>
-        <p className="font-medium">Start the companion</p>
+        <p className="font-medium">Install the companion</p>
         <p className="text-xs text-muted">
-          Run <code className="rounded bg-elevated px-1">npm run companion</code> in the aisidebar folder, then try again.
+          AI Sidebar needs a small free app on your computer to reach your Claude and Google accounts. With Node.js
+          installed, run this in a terminal, then click Try again:
         </p>
+        <CopyCommand text={INSTALL_CMD} />
+        <a href={SETUP_URL} target="_blank" rel="noreferrer" className="block text-xs text-accent underline">
+          Setup guide
+        </a>
         <button type="button" className={secondaryBtn} onClick={() => state.refresh(true)}>
           Try again
         </button>

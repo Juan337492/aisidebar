@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
-import { WORKSPACE_DIR } from "./config.ts";
+import { VERSION, WORKSPACE_DIR } from "./config.ts";
 import { childEnv, stripAnsi } from "./process.ts";
 
 /** Minimal Agent Client Protocol (JSON-RPC over stdio) client — enough for sign-in and sign-out. */
@@ -58,7 +58,7 @@ export function startAcp(bin: string) {
       return this.request("initialize", {
         protocolVersion: 1,
         clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
-        clientInfo: { name: "aisidebar-companion", version: "0.1.0" },
+        clientInfo: { name: "aisidebar-companion", version: VERSION },
       });
     },
     onOutput(cb: (text: string) => void) {

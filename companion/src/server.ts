@@ -6,7 +6,9 @@ import type { Config } from "./config.ts";
 import { claudeAdapter } from "./providers/claude.ts";
 import { antigravityAdapter } from "./providers/antigravity.ts";
 
-export const VERSION = "0.1.0";
+import { VERSION } from "./config.ts";
+
+export { VERSION };
 const MAX_BODY = 2 * 1024 * 1024;
 
 function isExtensionOrigin(origin: string | undefined): boolean {

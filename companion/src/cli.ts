@@ -16,7 +16,8 @@ function banner() {
   console.log(`AI Sidebar companion v${VERSION}`);
   console.log(`  URL:   http://127.0.0.1:${cfg.port}`);
   console.log(`  Token: ${cfg.token}`);
-  console.log(`  Paste both into the extension's Settings → Companion. Config: ${CONFIG_PATH}`);
+  console.log(`  In the AI Sidebar extension, click Connect and allow it in the popup.`);
+  console.log(`  (Or paste the URL and token under Settings → Manual setup.) Config: ${CONFIG_PATH}`);
 }
 
 function xml(s: string) {
@@ -42,7 +43,14 @@ switch (cmd) {
       process.exit(1);
     }
     const script = resolve(fileURLToPath(import.meta.url));
-    const args = [process.execPath, "--disable-warning=ExperimentalWarning", script, "start"];
+    if (script.includes(`${"/"}_npx${"/"}`)) {
+      console.error(
+        "npx runs from a temporary folder that can be deleted, so auto-start would break.\n" +
+          "Install it permanently first, then run install again:\n\n  npm install -g aisidebar-companion\n  aisidebar-companion install\n",
+      );
+      process.exit(1);
+    }
+    const args = [process.execPath, ...(script.endsWith(".ts") ? ["--disable-warning=ExperimentalWarning"] : []), script, "start"];
     mkdirSync(join(homedir(), "Library", "LaunchAgents"), { recursive: true });
     writeFileSync(
       PLIST,

@@ -8,6 +8,7 @@ import type { ProviderStatus } from "@/lib/types";
 import { EFFORT_LABELS, ProviderMark, StatusDot, Toggle, timeAgo } from "./ui";
 import { ProviderAuth, primaryBtn, secondaryBtn } from "./ProviderAuth";
 import { usePairing } from "@/lib/usePairing";
+import { CopyCommand, INSTALL_CMD, SETUP_URL } from "./CopyCommand";
 
 function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
@@ -66,13 +67,16 @@ function Companion({ settings, update, state }: { settings: S; update: (p: Parti
         <p className="text-xs leading-relaxed text-muted">
           The companion is a small app on your computer that runs Claude Code and Antigravity for the sidebar, so chats use
           your own Claude and Google sign-ins.
-          {unreachable && (
-            <>
-              {" "}Start it with <code className="rounded bg-elevated px-1">npm run companion</code> in the{" "}
-              <code className="rounded bg-elevated px-1">aisidebar</code> folder.
-            </>
-          )}
         </p>
+        {unreachable && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted">Install and start it from a terminal (needs Node.js):</p>
+            <CopyCommand text={INSTALL_CMD} />
+            <a href={SETUP_URL} target="_blank" rel="noreferrer" className="block text-xs text-accent underline">
+              Setup guide
+            </a>
+          </div>
+        )}
         {!connected && !unreachable && (
           <div className="space-y-2">
             <button type="button" className={primaryBtn} disabled={pairing.waiting} onClick={() => pairing.connect()}>
@@ -97,7 +101,7 @@ function Companion({ settings, update, state }: { settings: S; update: (p: Parti
             <Field label="URL">
               <input className={inputCls} value={url} onChange={(e) => setUrl(e.target.value)} spellCheck={false} />
             </Field>
-            <Field label="Pairing token" hint="Printed by the companion when it starts (npm run companion:token).">
+            <Field label="Pairing token" hint="Shown by running: aisidebar-companion token">
               <input
                 className={inputCls}
                 type="password"
