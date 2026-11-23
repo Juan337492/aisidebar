@@ -7,6 +7,7 @@
 //   ai-sidebar-chrome.zip    Chrome extension (Load unpacked)
 //   ai-sidebar-firefox.xpi   Firefox extension, signed by Mozilla (if extension/.output/signed has one)
 //   ai-sidebar-firefox.zip   Firefox extension, unsigned (temporary install)
+//   AI-Sidebar-Setup.cmd     Windows: double-click to run install.ps1
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -33,6 +34,7 @@ run("npm", ["run", "zip", "-w", "extension"]);
 run("npm", ["run", "zip:firefox", "-w", "extension"]);
 add(`extension/.output/ai-sidebar-${version}-chrome.zip`, "ai-sidebar-chrome.zip");
 add(`extension/.output/ai-sidebar-${version}-firefox.zip`, "ai-sidebar-firefox.zip");
+add("windows/AI-Sidebar-Setup.cmd", "AI-Sidebar-Setup.cmd");
 const signedDir = "extension/.output/signed";
 const xpi = existsSync(signedDir) && readdirSync(signedDir).find((f) => f.endsWith(".xpi") && f.includes(version));
 if (xpi) add(join(signedDir, xpi), "ai-sidebar-firefox.xpi");

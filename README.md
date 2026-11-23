@@ -2,35 +2,43 @@
 
 # AI Sidebar
 
-Chat with **Claude** and **Gemini** in a sidebar next to any web page, in **Chrome or Firefox**, using the accounts
-you already have (Claude Pro/Max, or your Google account). No API keys.
+Chat with **Claude** and **Gemini** in a sidebar next to any web page, in **Chrome, Edge or Firefox** on **Mac or
+Windows**, using the accounts you already have (Claude Pro/Max, or your Google account). No API keys.
 
 ![AI Sidebar summarizing a page](docs/amo/screenshots/1-summarize-page.png)
 
 ## Install
 
-**You need:** a Mac, and [Claude Code](https://claude.com/product/claude-code) (for Claude) and/or
+**You need:** a Mac or Windows PC, and [Claude Code](https://claude.com/product/claude-code) (for Claude) and/or
 [Antigravity](https://antigravity.google/download) (for Gemini).
 
 ### 1. Set up the companion app
 
-Paste this into **Terminal**:
+This installs a small helper app and starts it automatically at login. The helper is what lets the sidebar reach your
+Claude and Google accounts. It also checks that Node.js, Claude Code and Antigravity are installed, and tells you what's
+missing.
+
+**Windows:** download **[AI-Sidebar-Setup.cmd](https://github.com/Juan337492/aisidebar/releases/latest/download/AI-Sidebar-Setup.cmd)**
+and double-click it. If Windows says it "protected your PC", click **More info → Run anyway** (the file just runs
+[install.ps1](install.ps1)). Or paste this into **PowerShell**:
+
+```powershell
+irm https://raw.githubusercontent.com/Juan337492/aisidebar/main/install.ps1 | iex
+```
+
+**Mac:** paste this into **Terminal** ([read the script](install.sh) first if you like):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Juan337492/aisidebar/main/install.sh | bash
 ```
-
-This installs a small helper app and starts it automatically at login. The helper is what lets the sidebar reach your
-Claude and Google accounts. It also checks that Node.js, Claude Code and Antigravity are installed, and tells you what's
-missing. ([Read the script first](install.sh) if you like.)
 
 ### 2. Add the extension
 
 Download it from the **[latest release](https://github.com/Juan337492/aisidebar/releases/latest)**:
 
 - **Chrome, Edge, Brave or Arc:** download **[ai-sidebar-chrome.zip](https://github.com/Juan337492/aisidebar/releases/latest/download/ai-sidebar-chrome.zip)**
-  and unzip it. Go to `chrome://extensions`, turn on **Developer mode** (top right), click **Load unpacked**, and
-  choose the unzipped folder.
+  and unzip it. Go to `chrome://extensions` (`edge://extensions` in Edge), turn on **Developer mode**, click
+  **Load unpacked**, and choose the unzipped folder.
 - **Firefox:** download **[ai-sidebar-firefox.zip](https://github.com/Juan337492/aisidebar/releases/latest/download/ai-sidebar-firefox.zip)**.
   Go to `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…** and choose the zip. Firefox removes
   it when it restarts. When a signed `ai-sidebar-firefox.xpi` is listed on the release page, use that instead for a
@@ -39,16 +47,17 @@ Download it from the **[latest release](https://github.com/Juan337492/aisidebar/
 ### 3. Connect and sign in
 
 Click the AI Sidebar toolbar icon (or press **Alt+Shift+A**), then:
-1. Click **Connect**, then click **Allow** in the popup on your Mac.
+1. Click **Connect**, then confirm in the popup that appears (**Allow** on Mac, **Yes** on Windows).
 2. Click **Sign in with Claude** or **Sign in with Google**, and log in on their official page.
 
 That's it. Try **Use page** to ask about the page you're on, or right-click selected text → **Explain**.
 
 <details>
-<summary>Windows or Linux</summary>
+<summary>Linux</summary>
 
-The installer works, but auto-start is macOS-only. Keep `aisidebar-companion start` running in a terminal, and in the
-sidebar use **Settings → Manual setup** with the token from `aisidebar-companion token`.
+`install.sh` works, but auto-start and the Connect popup are Mac/Windows-only. Keep `aisidebar-companion start`
+running (for example from your desktop's startup apps), and in the sidebar use **Settings → Manual setup** with the
+token from `aisidebar-companion token`.
 </details>
 
 <details>

@@ -66,7 +66,7 @@ export async function* streamChat(s: Settings, req: ChatRequest, signal: AbortSi
 }
 
 /**
- * Asks the companion for its token. The companion shows an "Allow AI Sidebar?" dialog on the Mac,
+ * Asks the companion for its token. The companion shows an "Allow AI Sidebar?" dialog on the computer,
  * so no token has to be copied by hand. Resolves with the token once the person clicks Allow.
  */
 export async function pair(companionUrl: string): Promise<string> {

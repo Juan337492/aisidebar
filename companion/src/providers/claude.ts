@@ -91,9 +91,9 @@ export function claudeAdapter(getBinaryOverride: () => string | undefined): Adap
     async *chat(req: ChatRequest, signal: AbortSignal): AsyncGenerator<ChatEvent> {
       const bin = binary();
       if (!bin) throw new Error("Claude Code isn't installed.");
+      // The prompt goes in on stdin (see streamLines), so page text of any size works on every OS.
       const args = [
         "-p",
-        req.prompt,
         "--output-format", "stream-json",
         "--verbose",
         "--include-partial-messages",
@@ -110,7 +110,7 @@ export function claudeAdapter(getBinaryOverride: () => string | undefined): Adap
       if (req.sessionId) args.push("--resume", req.sessionId);
 
       let sentSession = false;
-      for await (const line of streamLines(bin, args, signal)) {
+      for await (const line of streamLines(bin, args, signal, req.prompt)) {
         const ev = parseJson(line);
         if (!ev) continue;
         if (!sentSession && typeof ev.session_id === "string") {

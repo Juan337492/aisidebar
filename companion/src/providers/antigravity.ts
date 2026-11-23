@@ -12,7 +12,7 @@ function t3Binary(): string | undefined {
   try {
     const dir = join(homedir(), ".t3", "tools", "antigravity-acp", `${process.platform}-${process.arch}`);
     const { releaseId } = JSON.parse(readFileSync(join(dir, "active.json"), "utf8"));
-    const bin = join(dir, "versions", releaseId, "antigravity");
+    const bin = join(dir, "versions", releaseId, process.platform === "win32" ? "antigravity.exe" : "antigravity");
     readFileSync(join(dir, "versions", releaseId, ".install-complete.json"));
     return bin;
   } catch {
@@ -155,12 +155,14 @@ export function antigravityAdapter(getBinaryOverride: () => string | undefined):
       if (!bin) throw new Error("Antigravity CLI not found.");
       // No system-prompt flag, so instructions ride along with the first turn.
       const prompt = req.system && !req.sessionId ? `${req.system}\n\n${req.prompt}` : req.prompt;
-      const args = ["-p", prompt, "--output-format", "stream-json", "--disable-slash-commands", "--sandbox"];
+      // The prompt goes in on stdin as one stream-json message, so page text of any size works on every OS.
+      const args = ["--input-format", "stream-json", "--output-format", "stream-json", "--disable-slash-commands", "--sandbox"];
+      const input = JSON.stringify({ event: "user", message: { content: prompt } }) + "\n";
       if (req.model) args.push("--model", req.effort ? `${req.model}-${req.effort}` : req.model);
       if (req.sessionId) args.push("--conversation", req.sessionId);
 
       let sentSession = false;
-      for await (const line of streamLines(bin, args, signal)) {
+      for await (const line of streamLines(bin, args, signal, input)) {
         const ev = parseJson(line);
         if (!ev) continue;
         const convId = ev.conversation_id ?? ev.step_update?.conversation_id ?? ev.result?.conversation_id;

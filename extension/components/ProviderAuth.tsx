@@ -93,7 +93,7 @@ export function ProviderAuth({
   if (!showSignOut || !p.canSignOut) return null;
   const confirmText =
     `Sign out of ${p.displayName} on this computer?\n\n` +
-    `This also signs out ${p.id === "claude" ? "Claude Code" : "Antigravity"} everywhere else on this Mac (terminal, T3 Code, etc.).`;
+    `This also signs out ${p.id === "claude" ? "Claude Code" : "Antigravity"} everywhere else on this computer (terminal, other apps, etc.).`;
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap gap-2">
