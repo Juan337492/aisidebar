@@ -64,3 +64,34 @@ export async function* streamChat(s: Settings, req: ChatRequest, signal: AbortSi
   }
   if (buf.trim()) yield JSON.parse(buf) as ChatEvent;
 }
+
+/**
+ * Asks the companion for its token. The companion shows an "Allow AI Sidebar?" dialog on the Mac,
+ * so no token has to be copied by hand. Resolves with the token once the person clicks Allow.
+ */
+export async function pair(companionUrl: string): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetch(companionUrl.replace(/\/+$/, "") + "/pair", { method: "POST" });
+  } catch {
+    throw new CompanionError(
+      `Can't reach the companion at ${companionUrl}. Start it with \`npm run companion\` in the aisidebar folder.`,
+      "unreachable",
+    );
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body.token) throw new CompanionError(body.error ?? `Pairing failed (${res.status})`, "other");
+  return body.token as string;
+}
+
+export async function startLogin(s: Settings, provider: string): Promise<void> {
+  await call(s, `/providers/${encodeURIComponent(provider)}/login`, { method: "POST" });
+}
+
+export async function cancelLogin(s: Settings, provider: string): Promise<void> {
+  await call(s, `/providers/${encodeURIComponent(provider)}/login/cancel`, { method: "POST" });
+}
+
+export async function logout(s: Settings, provider: string): Promise<void> {
+  await call(s, `/providers/${encodeURIComponent(provider)}/logout`, { method: "POST" });
+}

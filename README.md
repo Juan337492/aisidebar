@@ -32,15 +32,26 @@ npm run companion:install
 ### Chrome
 1. `npm run build` → creates `extension/.output/chrome-mv3`
 2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and pick that folder.
-3. Click the toolbar icon (or press **Alt+Shift+A**). Then go to Settings, paste the token, and click **Save and connect**.
+3. Click the toolbar icon (or press **Alt+Shift+A**) and click **Connect**. Click **Allow** in the popup that appears on your Mac.
 
 ### Firefox
 1. `npm run build` → creates `extension/.output/firefox-mv3`
 2. Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, and pick `manifest.json` in that folder.
    For a permanent install, sign it as an unlisted add-on on addons.mozilla.org with `npm run zip`.
-3. Toggle the sidebar with the toolbar icon or **Alt+Shift+A**.
+3. Toggle the sidebar with the toolbar icon or **Alt+Shift+A**, then click **Connect** and allow it on your Mac.
 
 For development with hot reload, run `npm run dev` (Chrome) or `npm run dev:firefox`.
+
+## Signing in
+
+Click **Sign in with Claude** or **Sign in with Google** in the sidebar (or in Settings → Providers). The provider's
+**official sign-in page** opens in your browser, and you log in there with your usual account (password, email code,
+2FA, SSO). The sidebar notices when you're done. The extension and companion never see your password: the CLIs keep
+their own sign-in, exactly as when you run `claude auth login` yourself. **Sign out** and **Change account** sign that
+CLI out on the whole computer, including other apps that use it.
+
+On other platforms, or if you prefer, use **Manual setup** in Settings and paste the token from
+`npm run companion:token`.
 
 ## Features
 
@@ -53,6 +64,7 @@ For development with hot reload, run `npm run dev` (Chrome) or `npm run dev:fire
 
 ## Security
 
+- New connections must be approved in a native macOS dialog that names the extension asking.
 - The companion listens on `127.0.0.1` only. Every request needs the pairing token, and requests from web pages
   (non-extension `Origin`) or with an unexpected `Host` (DNS rebinding) are rejected.
 - The CLIs run in an empty folder (`~/.aisidebar/workspace`). Claude runs with **no tools** and Antigravity runs in

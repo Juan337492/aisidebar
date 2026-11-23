@@ -11,7 +11,11 @@ import { MessageView } from "./MessageView";
 import { ModelPicker } from "./ModelPicker";
 import { History } from "./History";
 import { SettingsPanel } from "./Settings";
-import { IconButton, timeAgo } from "./ui";
+import { IconButton, ProviderMark, timeAgo } from "./ui";
+import { ProviderAuth, primaryBtn, secondaryBtn } from "./ProviderAuth";
+import { usePairing } from "@/lib/usePairing";
+import { isProviderEnabled, type Settings } from "@/lib/settings";
+import type { ProvidersState } from "@/lib/useProviders";
 
 type View = "chat" | "history" | "settings";
 
@@ -154,20 +158,12 @@ export function App() {
                   {greeting()}
                 </h2>
                 {needsSetup && (
-                  <div className="mb-6 rounded-xl border border-line bg-surface p-4 text-sm">
-                    <p className="mb-2 font-medium">{error ? "Connect the companion" : "No provider is ready"}</p>
-                    <p className="mb-3 text-xs text-muted">
-                      {error?.message ??
-                        "Turn on Claude or Gemini in Settings, and make sure you're signed in to its CLI."}
-                    </p>
-                    <button
-                      type="button"
-                      className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg"
-                      onClick={() => setView("settings")}
-                    >
-                      Open settings
-                    </button>
-                  </div>
+                  <SetupCard
+                    settings={settings}
+                    update={update}
+                    state={providersState}
+                    openSettings={() => setView("settings")}
+                  />
                 )}
                 {recents.length > 0 && (
                   <div>
@@ -208,6 +204,78 @@ export function App() {
           </div>
           <div className="px-3 pt-1 pb-3">{composer}</div>
         </>
+      )}
+    </div>
+  );
+}
+
+/** First-run card: connect the companion, then sign in to a provider — all without leaving the sidebar. */
+function SetupCard({
+  settings,
+  update,
+  state,
+  openSettings,
+}: {
+  settings: Settings;
+  update: (p: Partial<Settings>) => Promise<void>;
+  state: ProvidersState;
+  openSettings: () => void;
+}) {
+  const pairing = usePairing(settings, update, state.refresh);
+  const { error, providers } = state;
+  const card = "mb-6 space-y-3 rounded-xl border border-line bg-surface p-4 text-sm";
+
+  if (error?.kind === "unreachable") {
+    return (
+      <div className={card}>
+        <p className="font-medium">Start the companion</p>
+        <p className="text-xs text-muted">
+          Run <code className="rounded bg-elevated px-1">npm run companion</code> in the aisidebar folder, then try again.
+        </p>
+        <button type="button" className={secondaryBtn} onClick={() => state.refresh(true)}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (error || !settings.token) {
+    return (
+      <div className={card}>
+        <p className="font-medium">Connect to this computer</p>
+        <p className="text-xs text-muted">
+          {pairing.waiting
+            ? "Look for the “AI Sidebar” popup on your Mac and click Allow."
+            : "AI Sidebar uses the companion app to reach your Claude and Google accounts."}
+        </p>
+        <button type="button" className={primaryBtn} disabled={pairing.waiting} onClick={() => pairing.connect()}>
+          {pairing.waiting ? "Waiting for approval…" : "Connect"}
+        </button>
+        {pairing.error && <p className="text-xs text-danger">{pairing.error}</p>}
+      </div>
+    );
+  }
+
+  const enabled = providers.filter((p) => isProviderEnabled(settings, p.id));
+  return (
+    <div className={card}>
+      <p className="font-medium">Sign in to get started</p>
+      <p className="text-xs text-muted">Use your Claude or Google account. Sign-in happens on their official page.</p>
+      <ul className="space-y-3">
+        {enabled.map((p) => (
+          <li key={p.id} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <ProviderMark id={p.id} size={16} />
+              <span className="text-sm">{settings.providers[p.id]?.displayName || p.displayName}</span>
+            </div>
+            <ProviderAuth p={p} settings={settings} refresh={state.refresh} />
+          </li>
+        ))}
+      </ul>
+      {enabled.length === 0 && (
+        <button type="button" className={secondaryBtn} onClick={openSettings}>
+          Turn on a provider in Settings
+        </button>
       )}
     </div>
   );

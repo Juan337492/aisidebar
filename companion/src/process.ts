@@ -105,3 +105,52 @@ export function parseJson(line: string): any {
     return undefined;
   }
 }
+
+const URL_RE = /https:\/\/[^\s"'<>)\]]+/;
+
+/**
+ * Runs a CLI sign-in command and watches its output for the sign-in URL.
+ * The CLI opens the official page itself; it never shows us the user's password.
+ */
+export function watchLogin(bin: string, args: string[], timeoutMs = 10 * 60_000) {
+  const child = spawn(bin, args, { cwd: WORKSPACE_DIR, env: childEnv(), stdio: ["pipe", "pipe", "pipe"] });
+  let urlCb: ((u: string) => void) | undefined;
+  let seenUrl: string | undefined;
+  let tail = "";
+  const onData = (d: Buffer) => {
+    const text = d.toString();
+    tail = (tail + text).slice(-2000);
+    const m = text.match(URL_RE);
+    if (m && !seenUrl) {
+      seenUrl = m[0];
+      urlCb?.(seenUrl);
+    }
+  };
+  child.stdout.on("data", onData);
+  child.stderr.on("data", onData);
+  const timer = setTimeout(() => child.kill("SIGTERM"), timeoutMs);
+  const done = new Promise<void>((resolve, reject) => {
+    child.on("error", (e) => reject(new Error(String(e))));
+    child.on("close", (code, signal) => {
+      clearTimeout(timer);
+      if (code === 0) resolve();
+      else reject(new Error(signal ? "Sign-in was cancelled or timed out." : stripAnsi(tail).split("\n").map((l) => l.trim()).filter((l) => l && !/https?:\/\//.test(l)).slice(-2).join(" ") || `Sign-in failed (exit ${code}).`));
+    });
+  });
+  return {
+    child,
+    done,
+    onUrl(cb: (u: string) => void) {
+      urlCb = cb;
+      if (seenUrl) cb(seenUrl);
+    },
+    cancel() {
+      child.kill("SIGTERM");
+    },
+  };
+}
+
+export function stripAnsi(s: string) {
+  // eslint-disable-next-line no-control-regex
+  return s.replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, "");
+}

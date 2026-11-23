@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Adapter, ChatEvent, ChatRequest, ModelOption, ProviderStatus } from "../types.ts";
+import type { Adapter, ChatEvent, ChatRequest, LoginProcess, ModelOption, ProviderStatus } from "../types.ts";
+import { startAcp } from "../acp.ts";
 import { parseJson, run, streamLines, which } from "../process.ts";
 
 const EFFORT_ORDER = ["low", "medium", "high", "xhigh"];
@@ -64,6 +65,9 @@ export function antigravityAdapter(getBinaryOverride: () => string | undefined):
         installed: false,
         authenticated: false,
         models: [],
+        installUrl: "https://antigravity.google/download",
+        signInLabel: "Sign in with Google",
+        canSignOut: true,
       };
       if (!bin) {
         return (cached = {
@@ -87,10 +91,63 @@ export function antigravityAdapter(getBinaryOverride: () => string | undefined):
         message:
           parsed.length > 0
             ? undefined
-            : (models.stderr || models.stdout).trim().slice(0, 300) || "Not signed in. Run `antigravity` in a terminal and sign in with Google.",
+            : "Not signed in. Click Sign in to log in with your Google account.",
       };
       cached = { at: Date.now(), value };
       return value;
+    },
+
+    login(): LoginProcess {
+      const bin = binary();
+      if (!bin) throw new Error("Antigravity CLI not found.");
+      cached = undefined;
+      const acp = startAcp(bin);
+      let urlCb: ((u: string) => void) | undefined;
+      let seen: string | undefined;
+      acp.onOutput((text) => {
+        const m = text.match(/https:\/\/[^\s"'<>)\]]+/);
+        if (m && !seen && /google|accounts|oauth|antigravity/.test(m[0])) {
+          seen = m[0];
+          urlCb?.(seen);
+        }
+      });
+      const timer = setTimeout(() => acp.close(), 10 * 60_000);
+      // Opens Google's own sign-in page in the browser; resolves once you've finished there.
+      const done = acp
+        .initialize()
+        .then(() => acp.request("authenticate", { methodId: "oauth-personal" }))
+        .then(() => undefined)
+        .finally(() => {
+          clearTimeout(timer);
+          acp.close();
+        });
+      return {
+        done,
+        onUrl(cb) {
+          urlCb = cb;
+          if (seen) cb(seen);
+        },
+        cancel: () => acp.close(),
+      };
+    },
+
+    async logout() {
+      const bin = binary();
+      if (!bin) throw new Error("Antigravity CLI not found.");
+      cached = undefined;
+      const acp = startAcp(bin);
+      try {
+        await acp.initialize();
+        try {
+          await acp.request("logout", {});
+        } catch (e) {
+          // Method name differs between ACP revisions.
+          if ((e as { code?: number }).code !== -32601) throw e;
+          await acp.request("auth/logout", {});
+        }
+      } finally {
+        acp.close();
+      }
     },
 
     async *chat(req: ChatRequest, signal: AbortSignal): AsyncGenerator<ChatEvent> {

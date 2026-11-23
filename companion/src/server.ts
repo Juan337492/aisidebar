@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { timingSafeEqual } from "node:crypto";
-import type { Adapter, ChatRequest } from "./types.ts";
+import type { Adapter, ChatRequest, LoginProcess, LoginState } from "./types.ts";
+import { askToPair } from "./pairing.ts";
 import type { Config } from "./config.ts";
 import { claudeAdapter } from "./providers/claude.ts";
 import { antigravityAdapter } from "./providers/antigravity.ts";
@@ -46,6 +47,37 @@ export function startServer(cfg: Config) {
     antigravityAdapter(() => cfg.binaries.antigravity),
   ];
   const byId = new Map(adapters.map((a) => [a.id, a]));
+  const logins = new Map<string, LoginState & { proc?: LoginProcess }>();
+  let pairing: Promise<boolean> | undefined;
+
+  const withLogin = async (a: Adapter, force: boolean) => {
+    const st = await a.status(force);
+    const l = logins.get(a.id);
+    return l ? { ...st, login: { state: l.state, url: l.url, message: l.message, startedAt: l.startedAt } } : st;
+  };
+
+  const startLogin = (a: Adapter): LoginState => {
+    const existing = logins.get(a.id);
+    if (existing?.state === "pending") return existing;
+    const proc = a.login!();
+    const entry: LoginState & { proc?: LoginProcess } = { state: "pending", startedAt: Date.now(), proc };
+    logins.set(a.id, entry);
+    proc.onUrl((url) => (entry.url = url));
+    proc.done.then(
+      async () => {
+        if (logins.get(a.id) === entry) logins.delete(a.id);
+        await a.status(true).catch(() => {});
+      },
+      (e: Error) => {
+        if (logins.get(a.id) !== entry) return;
+        entry.state = "failed";
+        entry.message = e.message;
+        entry.proc = undefined;
+      },
+    );
+    return entry;
+  };
+
   const allowedHosts = new Set([`127.0.0.1:${cfg.port}`, `localhost:${cfg.port}`]);
 
   const server = createServer(async (req, res) => {
@@ -63,13 +95,51 @@ export function startServer(cfg: Config) {
 
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
     if (url.pathname === "/health") return json(res, 200, { ok: true, name: "aisidebar-companion", version: VERSION });
+
+    // Pairing: an extension asks for the token; the person at the Mac approves it in a native dialog.
+    if (req.method === "POST" && url.pathname === "/pair") {
+      if (!origin) return json(res, 403, { error: "Pairing must come from the extension." });
+      if (pairing) return json(res, 409, { error: "A pairing request is already waiting for approval on your Mac." });
+      try {
+        pairing = askToPair(origin);
+        const ok = await pairing;
+        return ok
+          ? json(res, 200, { token: cfg.token })
+          : json(res, 403, { error: "The connection wasn't allowed on your Mac." });
+      } catch {
+        return json(res, 501, { error: "Automatic pairing only works on macOS. Paste the token from the companion's output instead." });
+      } finally {
+        pairing = undefined;
+      }
+    }
     if (!tokenOk(req, cfg.token)) return json(res, 401, { error: "Missing or wrong pairing token" });
 
     try {
       if (req.method === "GET" && url.pathname === "/providers") {
         const force = url.searchParams.get("refresh") === "1";
-        const list = await Promise.all(adapters.map((a) => a.status(force)));
+        const list = await Promise.all(adapters.map((a) => withLogin(a, force)));
         return json(res, 200, { providers: list });
+      }
+
+      const auth = url.pathname.match(/^\/providers\/([\w-]+)\/(login|logout|login\/cancel)$/);
+      if (req.method === "POST" && auth) {
+        const [, id, action] = auth;
+        const a = byId.get(id!);
+        if (!a) return json(res, 404, { error: `Unknown provider: ${id}` });
+        if (action === "login") {
+          if (!a.login) return json(res, 400, { error: "This provider can't sign in from here." });
+          const l = startLogin(a);
+          return json(res, 200, { login: { state: l.state, url: l.url, startedAt: l.startedAt } });
+        }
+        if (action === "login/cancel") {
+          logins.get(id!)?.proc?.cancel();
+          logins.delete(id!);
+          return json(res, 200, { ok: true });
+        }
+        if (!a.logout) return json(res, 400, { error: "This provider can't sign out from here." });
+        logins.delete(id!);
+        await a.logout();
+        return json(res, 200, { provider: await a.status(true) });
       }
 
       if (req.method === "POST" && url.pathname === "/chat") {

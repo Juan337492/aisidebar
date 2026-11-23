@@ -21,7 +21,10 @@ function Options() {
   );
 }
 
-createRoot(document.getElementById("root")!).render(
+// Reuse the root when dev hot-reload re-runs this module.
+const container = document.getElementById("root") as HTMLElement & { _root?: ReturnType<typeof createRoot> };
+container._root ??= createRoot(container);
+container._root.render(
   <StrictMode>
     <Options />
   </StrictMode>,

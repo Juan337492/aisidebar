@@ -23,6 +23,21 @@ export interface ProviderStatus {
   models: ModelOption[];
   /** Human-readable reason when not ready. */
   message?: string;
+  /** Where to get the CLI if it's missing. */
+  installUrl?: string;
+  /** Label for the sign-in button, e.g. "Sign in with Google". Absent = sign-in not supported. */
+  signInLabel?: string;
+  canSignOut?: boolean;
+  /** Present while a sign-in started from the sidebar is running or just failed. */
+  login?: LoginState;
+}
+
+export interface LoginState {
+  state: "pending" | "failed";
+  /** Official sign-in page, in case the browser didn't open by itself. */
+  url?: string;
+  message?: string;
+  startedAt: number;
 }
 
 export interface ChatRequest {
@@ -44,9 +59,20 @@ export type ChatEvent =
   | { type: "done"; usage?: Record<string, unknown> }
   | { type: "error"; message: string };
 
+/** A running sign-in. The CLI opens the provider's official page; we only watch for it to finish. */
+export interface LoginProcess {
+  /** Resolves when sign-in succeeds; rejects with a readable message when it fails. */
+  done: Promise<void>;
+  /** Called with the sign-in URL if the CLI prints one. */
+  onUrl(cb: (url: string) => void): void;
+  cancel(): void;
+}
+
 export interface Adapter {
   id: string;
   displayName: string;
   status(force?: boolean): Promise<ProviderStatus>;
   chat(req: ChatRequest, signal: AbortSignal): AsyncIterable<ChatEvent>;
+  login?(): LoginProcess;
+  logout?(): Promise<void>;
 }

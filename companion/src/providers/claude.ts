@@ -1,5 +1,5 @@
 import type { Adapter, ChatEvent, ChatRequest, ModelOption, ProviderStatus } from "../types.ts";
-import { parseJson, run, streamLines, which } from "../process.ts";
+import { parseJson, run, streamLines, watchLogin, which } from "../process.ts";
 
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"];
 
@@ -41,6 +41,9 @@ export function claudeAdapter(getBinaryOverride: () => string | undefined): Adap
         installed: false,
         authenticated: false,
         models: MODELS,
+        installUrl: "https://claude.com/product/claude-code",
+        signInLabel: "Sign in with Claude",
+        canSignOut: true,
       };
       if (!bin) {
         return (cached = {
@@ -63,10 +66,26 @@ export function claudeAdapter(getBinaryOverride: () => string | undefined): Adap
             : info.loggedIn
               ? "API key / Console"
               : undefined,
-        message: info.loggedIn ? undefined : "Not signed in. Run `claude` in a terminal and log in with your Claude account.",
+        message: info.loggedIn ? undefined : "Not signed in. Click Sign in to log in with your Claude account.",
       };
       cached = { at: Date.now(), value };
       return value;
+    },
+
+    login() {
+      const bin = binary();
+      if (!bin) throw new Error("Claude Code isn't installed.");
+      cached = undefined;
+      // Opens claude.ai's own sign-in page in the browser and waits for it to finish.
+      return watchLogin(bin, ["auth", "login", "--claudeai"]);
+    },
+
+    async logout() {
+      const bin = binary();
+      if (!bin) throw new Error("Claude Code isn't installed.");
+      cached = undefined;
+      const r = await run(bin, ["auth", "logout"]);
+      if (r.code !== 0) throw new Error((r.stderr || r.stdout).trim() || "Sign-out failed.");
     },
 
     async *chat(req: ChatRequest, signal: AbortSignal): AsyncGenerator<ChatEvent> {

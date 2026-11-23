@@ -44,6 +44,14 @@ export function useProviders(settings: Settings | undefined): ProvidersState {
     if (url !== undefined) refresh();
   }, [refresh, url]);
 
+  // While a sign-in is running in the browser, check back every couple of seconds.
+  const signingIn = providers.some((p) => p.login?.state === "pending");
+  useEffect(() => {
+    if (!signingIn) return;
+    const t = setInterval(() => refresh(false), 2000);
+    return () => clearInterval(t);
+  }, [signingIn, refresh]);
+
   return { providers, error, loading, checkedAt, refresh };
 }
 
