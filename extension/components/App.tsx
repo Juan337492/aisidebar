@@ -231,8 +231,8 @@ function SetupCard({
       <div className={card}>
         <p className="font-medium">Install the companion</p>
         <p className="text-xs text-muted">
-          AI Sidebar needs a small free app on your computer to reach your Claude and Google accounts. With Node.js
-          installed, run this in a terminal, then click Try again:
+          AI Sidebar needs a small free app on your computer to reach your Claude and Google accounts. Paste this into
+          Terminal, then click Try again:
         </p>
         <CopyCommand text={INSTALL_CMD} />
         <a href={SETUP_URL} target="_blank" rel="noreferrer" className="block text-xs text-accent underline">
