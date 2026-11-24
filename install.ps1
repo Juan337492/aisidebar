@@ -82,9 +82,9 @@ if ($claude) { Ok "Claude Code found (for Claude)" }
 else { Warn "Claude Code not found. For Claude, install it: https://claude.com/product/claude-code" }
 
 $found = [bool]$claude
-$agy = (Get-Command antigravity -ErrorAction SilentlyContinue) -or (Get-Command agy -ErrorAction SilentlyContinue) -or (Test-Path "$env:USERPROFILE\.t3\tools\antigravity-acp")
+$agy = (Get-Command agy -ErrorAction SilentlyContinue) -or (Test-Path "$env:LOCALAPPDATA\agy\bin\agy.exe") -or (Test-Path "$env:USERPROFILE\.t3\tools\antigravity-acp")
 if ($agy) { Ok "Antigravity found (for Gemini)"; $found = $true }
-else { Warn "Antigravity not found. For Gemini, install it: https://antigravity.google/download" }
+else { Warn "Antigravity CLI not found (the desktop app isn't enough). For Gemini run: irm https://antigravity.google/cli/install.ps1 | iex" }
 
 if (Get-Command codex -ErrorAction SilentlyContinue) { Ok "Codex found (for ChatGPT)"; $found = $true }
 else { Warn "Codex not found (optional). For ChatGPT: npm install -g @openai/codex" }

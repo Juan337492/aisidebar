@@ -1,6 +1,6 @@
 {
   "name": "aisidebar-companion",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Local helper for the AI Sidebar browser extension: chat with Claude, Gemini, ChatGPT or local models using your own sign-ins.",
   "bin": {

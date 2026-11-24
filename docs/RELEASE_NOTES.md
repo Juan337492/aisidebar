@@ -1,12 +1,9 @@
 ## What's new
 
-- **ChatGPT** (via Codex) and **local models** (via Ollama)
-- **Screenshots** and pasted images, and **attach other tabs**
-- Smarter page reading: articles without the clutter, Google Docs/Sheets/Slides, YouTube transcripts
-- **Quick actions** you can customize, **Retry**, **Edit**, code copy buttons, token usage
-- Full-text chat search, rename and Markdown export
-- One-click companion updates, Linux auto-start, sturdier Windows auto-start
-- Fixes: errors that arrived mid-answer showed up as blank replies; switching chats mid-answer could save the reply to the wrong chat; Gemini now gets the same page-safety rules as Claude
+- **Fix: Gemini wasn't detected on Windows** after installing Antigravity. The companion now finds the Antigravity CLI (`agy`) where its installer puts it, and no longer shows a broken sign-in error.
+- When the Antigravity CLI is missing, Settings and the installers now explain that the desktop app alone isn't enough and show the one-line install command.
+
+Already on 0.3.0? Click **Update companion** in the sidebar. Coming from 0.2.x? Run the installer again once.
 
 ## Install in 3 steps
 

@@ -81,3 +81,20 @@ test("extension and companion share identical wire types", () => {
   const b = readFileSync(new URL("../../extension/lib/types.ts", import.meta.url), "utf8");
   assert.equal(b, a, "Copy companion/src/types.ts to extension/lib/types.ts");
 });
+
+test("t3Binary uses the recorded file name and skips missing files", async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, chmodSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { t3Binary } = await import("../src/providers/antigravity.ts");
+  const home = mkdtempSync(join(tmpdir(), "agy-"));
+  const dir = join(home, ".t3", "tools", "antigravity-acp", `${process.platform}-${process.arch}`);
+  mkdirSync(join(dir, "versions", "r1"), { recursive: true });
+  writeFileSync(join(dir, "active.json"), JSON.stringify({ releaseId: "r1" }));
+  writeFileSync(join(dir, "versions", "r1", ".install-complete.json"), JSON.stringify({ executable: { name: "agy-acp" } }));
+  assert.equal(t3Binary(home), undefined); // recorded but missing: not found, instead of a path that fails later
+  const exe = join(dir, "versions", "r1", process.platform === "win32" ? "agy-acp.exe" : "agy-acp");
+  writeFileSync(exe, "");
+  chmodSync(exe, 0o755);
+  assert.equal(t3Binary(home), exe);
+});

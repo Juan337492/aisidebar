@@ -79,9 +79,9 @@ if [ -n "$have_claude" ]; then ok "Claude Code found (for Claude)"; found_any=1
 else warn "Claude Code not found. For Claude, install it: https://claude.com/product/claude-code"; fi
 
 have_agy=""
-if command -v antigravity >/dev/null 2>&1 || command -v agy >/dev/null 2>&1 || [ -d "$HOME/.t3/tools/antigravity-acp" ]; then have_agy=1; fi
+if command -v agy >/dev/null 2>&1 || [ -x "$HOME/.local/bin/agy" ] || command -v antigravity >/dev/null 2>&1 || [ -d "$HOME/.t3/tools/antigravity-acp" ]; then have_agy=1; fi
 if [ -n "$have_agy" ]; then ok "Antigravity found (for Gemini)"; found_any=1
-else warn "Antigravity not found. For Gemini, install it: https://antigravity.google/download"; fi
+else warn "Antigravity CLI not found (the desktop app isn't enough). For Gemini run: curl -fsSL https://antigravity.google/cli/install.sh | bash"; fi
 
 if command -v codex >/dev/null 2>&1; then ok "Codex found (for ChatGPT)"; found_any=1
 else warn "Codex not found (optional). For ChatGPT: npm install -g @openai/codex"; fi
