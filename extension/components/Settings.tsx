@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, RefreshCw } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { getHealth } from "@/lib/companion";
 import { deleteAllChats } from "@/lib/chats";
-import { isProviderEnabled, type Settings as S } from "@/lib/settings";
+import { DEFAULT_ACTIONS, isProviderEnabled, type QuickAction, type Settings as S } from "@/lib/settings";
+import { useUpdate, type UpdateState } from "@/lib/useUpdate";
 import type { ProvidersState } from "@/lib/useProviders";
 import type { ProviderStatus } from "@/lib/types";
-import { EFFORT_LABELS, ProviderMark, StatusDot, Toggle, timeAgo } from "./ui";
+import { ConfirmButton, EFFORT_LABELS, ProviderMark, StatusDot, Toggle, timeAgo } from "./ui";
 import { ProviderAuth, primaryBtn, secondaryBtn } from "./ProviderAuth";
 import { usePairing } from "@/lib/usePairing";
 import { ALLOW_BUTTON, CopyCommand, INSTALL_APP, INSTALL_CMD, IS_WINDOWS, SETUP_URL, WINDOWS_SETUP_URL } from "./CopyCommand";
@@ -65,8 +66,8 @@ function Companion({ settings, update, state }: { settings: S; update: (p: Parti
           <span className="font-medium">{label}</span>
         </div>
         <p className="text-xs leading-relaxed text-muted">
-          The companion is a small app on your computer that runs Claude Code and Antigravity for the sidebar, so chats use
-          your own Claude and Google sign-ins.
+          The companion is a small app on your computer that runs Claude Code, Antigravity, Codex and Ollama for the sidebar,
+          so chats use your own sign-ins.
         </p>
         {unreachable && (
           <div className="space-y-2">
@@ -234,6 +235,125 @@ function ProviderRow({
   );
 }
 
+/** "A new version is available" card, for the companion (one click) and the extension (download link). */
+export function UpdateCard({ u, onDismiss }: { u: UpdateState; onDismiss?: () => void }) {
+  const info = u.info;
+  if (!info || (!info.updateAvailable && !u.extensionOutdated)) return null;
+  return (
+    <div className="space-y-2 rounded-xl border border-accent/40 bg-accent/5 p-3 text-xs">
+      <p className="font-medium">AI Sidebar {info.latest} is available</p>
+      {info.updateAvailable && (
+        <div className="space-y-1.5">
+          <p className="text-muted">
+            Companion app: v{info.current} → v{info.latest}.
+          </p>
+          {info.canSelfUpdate ? (
+            <button type="button" className={primaryBtn} disabled={u.updating} onClick={u.update}>
+              {u.updating ? "Updating… (this takes a minute)" : "Update companion"}
+            </button>
+          ) : (
+            <>
+              <p className="text-muted">Run the installer again to update:</p>
+              <CopyCommand text={INSTALL_CMD} />
+            </>
+          )}
+          {u.error && <p className="text-danger">{u.error}</p>}
+        </div>
+      )}
+      {u.extensionOutdated && (
+        <p className="text-muted">
+          Extension: v{u.extensionVersion} → v{info.latest}.{" "}
+          <a href={info.releaseUrl} target="_blank" rel="noreferrer" className="text-accent underline">
+            Download the new version
+          </a>{" "}
+          and load it the same way as before.
+        </p>
+      )}
+      {onDismiss && (
+        <button type="button" className="text-muted hover:text-fg" onClick={onDismiss}>
+          Not now
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ActionsEditor({ settings, update }: { settings: S; update: (p: Partial<S>) => Promise<void> }) {
+  const actions = settings.actions;
+  const save = (next: QuickAction[]) => update({ actions: next });
+  const patch = (id: string, p: Partial<QuickAction>) => save(actions.map((a) => (a.id === id ? { ...a, ...p } : a)));
+  const move = (i: number, d: -1 | 1) => {
+    const next = [...actions];
+    const [a] = next.splice(i, 1);
+    next.splice(i + d, 0, a!);
+    save(next);
+  };
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted">
+        One-click prompts on the home screen and in the right-click menu. “Selection” actions work on highlighted text; “Page”
+        actions read the whole page.
+      </p>
+      <ul className="space-y-2">
+        {actions.map((a, i) => (
+          <li key={`${a.id}|${a.title}|${a.prompt}|${a.context}`} className="space-y-1.5 rounded-lg border border-line bg-surface p-2">
+            <div className="flex items-center gap-1">
+              <input
+                className={`${inputCls} py-1`}
+                aria-label="Action name"
+                defaultValue={a.title}
+                onBlur={(e) => e.target.value.trim() && patch(a.id, { title: e.target.value.trim() })}
+              />
+              <select
+                className={`${inputCls} w-auto py-1`}
+                aria-label="Works on"
+                value={a.context}
+                onChange={(e) => patch(a.id, { context: e.target.value as QuickAction["context"] })}
+              >
+                <option value="selection">Selection</option>
+                <option value="page">Page</option>
+              </select>
+              <button type="button" aria-label="Move up" disabled={i === 0} className="rounded p-1 text-muted hover:text-fg disabled:opacity-30" onClick={() => move(i, -1)}>
+                <ArrowUp size={13} />
+              </button>
+              <button
+                type="button"
+                aria-label="Move down"
+                disabled={i === actions.length - 1}
+                className="rounded p-1 text-muted hover:text-fg disabled:opacity-30"
+                onClick={() => move(i, 1)}
+              >
+                <ArrowDown size={13} />
+              </button>
+              <button type="button" aria-label="Remove action" className="rounded p-1 text-muted hover:text-danger" onClick={() => save(actions.filter((x) => x.id !== a.id))}>
+                <Trash2 size={13} />
+              </button>
+            </div>
+            <textarea
+              className={`${inputCls} min-h-12 resize-y py-1 text-xs`}
+              aria-label="Prompt"
+              defaultValue={a.prompt}
+              onBlur={(e) => e.target.value.trim() && patch(a.id, { prompt: e.target.value.trim() })}
+            />
+          </li>
+        ))}
+      </ul>
+      <div className="flex gap-3">
+        <button
+          type="button"
+          className={`${secondaryBtn} inline-flex items-center gap-1`}
+          onClick={() => save([...actions, { id: crypto.randomUUID(), title: "New action", prompt: "", context: "selection" }])}
+        >
+          <Plus size={12} /> Add action
+        </button>
+        <button type="button" className="inline-flex items-center gap-1 text-xs text-muted hover:text-fg" onClick={() => save(DEFAULT_ACTIONS)}>
+          <RotateCcw size={12} /> Restore defaults
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsPanel({
   settings,
   update,
@@ -244,9 +364,15 @@ export function SettingsPanel({
   state: ProvidersState;
 }) {
   const [open, setOpen] = useState<string>();
+  const updates = useUpdate(settings, !state.error && !!settings.token);
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-5">
       <Companion settings={settings} update={update} state={state} />
+      {updates.info && (updates.info.updateAvailable || updates.extensionOutdated) && (
+        <div className="-mt-5 mb-8">
+          <UpdateCard u={updates} />
+        </div>
+      )}
 
       <Section
         title="Providers"
@@ -301,14 +427,18 @@ export function SettingsPanel({
               <option value="light">Light</option>
             </select>
           </Field>
-          <button
-            type="button"
+          <ConfirmButton
             className="text-xs text-danger hover:underline"
-            onClick={() => confirm("Delete all chats? This can't be undone.") && deleteAllChats()}
+            confirmLabel="Click again to delete every chat (can't be undone)"
+            onConfirm={() => deleteAllChats()}
           >
             Delete all chats
-          </button>
+          </ConfirmButton>
         </div>
+      </Section>
+
+      <Section title="Quick actions">
+        <ActionsEditor settings={settings} update={update} />
       </Section>
     </div>
   );

@@ -1,8 +1,8 @@
 {
   "name": "aisidebar-companion",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
-  "description": "Local helper for the AI Sidebar browser extension: chat with Claude and Gemini using your own Claude and Google sign-ins.",
+  "description": "Local helper for the AI Sidebar browser extension: chat with Claude, Gemini, ChatGPT or local models using your own sign-ins.",
   "bin": {
     "aisidebar-companion": "dist/cli.js"
   },
@@ -16,7 +16,9 @@
     "uninstall-service": "node --disable-warning=ExperimentalWarning src/cli.ts uninstall",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test": "node --test --disable-warning=ExperimentalWarning test/*.test.ts",
+    "update": "node --disable-warning=ExperimentalWarning src/cli.ts update"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
@@ -37,12 +39,15 @@
     "url": "https://github.com/Juan337492/aisidebar/issues"
   },
   "keywords": [
-    "claude",
-    "gemini",
     "antigravity",
-    "firefox",
+    "chatgpt",
     "chrome",
-    "sidebar",
-    "extension"
+    "claude",
+    "codex",
+    "extension",
+    "firefox",
+    "gemini",
+    "ollama",
+    "sidebar"
   ]
 }

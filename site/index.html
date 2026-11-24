@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install AI Sidebar</title>
+<meta name="description" content="Chat with Claude, Gemini, ChatGPT or local models next to any web page, using your own accounts. Install in three steps.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta property="og:title" content="Install AI Sidebar">
+<meta property="og:description" content="Chat with Claude, Gemini, ChatGPT or local models next to any web page, using your own accounts.">
+<meta property="og:image" content="https://juan337492.github.io/aisidebar/screenshot.png">
+<style>
+  :root {
+    --bg: #faf9f5; --surface: #ffffff; --elevated: #f0eee6; --line: #e3e1d9;
+    --fg: #1f1e1d; --muted: #6b6a65; --accent: #db2777; --accent-fg: #fff; --accent-soft: #fce7f3;
+    --warn-bg: #fef3c7; --warn-fg: #78350f;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1f1e1d; --surface: #2a2927; --elevated: #353431; --line: #42413d;
+      --fg: #f2f1ec; --muted: #a8a7a0; --accent: #ec4899; --accent-soft: #3b1f2e;
+      --warn-bg: #3a2f14; --warn-fg: #fcd98a;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+
+  header { padding: 48px 0 8px; text-align: center; }
+  header img { width: 56px; height: 56px; border-radius: 14px; }
+  h1 { font-family: ui-serif, "New York", Georgia, serif; font-weight: 500; font-size: clamp(30px, 6vw, 42px); line-height: 1.15; margin: 14px 0 10px; letter-spacing: -0.01em; }
+  .lede { color: var(--muted); font-size: 18px; max-width: 560px; margin: 0 auto; }
+  .version { color: var(--muted); font-size: 13px; margin-top: 10px; min-height: 1.4em; }
+
+  .shot { margin: 28px auto 8px; max-width: 680px; border-radius: 12px; border: 1px solid var(--line); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.12); }
+  .shot img { display: block; width: 100%; height: auto; }
+
+  .picker { display: flex; flex-wrap: wrap; gap: 10px 18px; justify-content: center; align-items: center; margin: 32px 0 8px; font-size: 14px; color: var(--muted); }
+  .seg { display: inline-flex; background: var(--elevated); border-radius: 10px; padding: 3px; gap: 2px; }
+  .seg button { font: inherit; font-size: 14px; border: 0; background: transparent; color: var(--fg); padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.12); font-weight: 600; }
+  .seg button:focus-visible, .btn:focus-visible, .copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  ol.steps { list-style: none; padding: 0; margin: 24px 0 0; counter-reset: step; }
+  ol.steps > li { counter-increment: step; position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 20px 20px 64px; margin-bottom: 14px; }
+  ol.steps > li::before { content: counter(step); position: absolute; left: 18px; top: 18px; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--accent-fg); font-weight: 700; display: grid; place-items: center; font-size: 15px; }
+  h2 { font-size: 19px; margin: 2px 0 6px; }
+  .why { color: var(--muted); margin: 0 0 14px; font-size: 15px; }
+  ol.sub { margin: 10px 0 0; padding-left: 20px; }
+  ol.sub li { margin: 6px 0; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: var(--accent-fg); text-decoration: none; font-weight: 600; padding: 11px 18px; border-radius: 10px; font-size: 15px; }
+  .btn:hover { filter: brightness(1.07); }
+  .btn svg { width: 18px; height: 18px; }
+  .btn.secondary { background: var(--elevated); color: var(--fg); }
+  .note { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
+  .callout { background: var(--warn-bg); color: var(--warn-fg); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-top: 12px; }
+
+  .cmd { display: flex; align-items: flex-start; gap: 8px; background: var(--elevated); border-radius: 10px; padding: 10px 12px; font: 13px/1.5 var(--mono); margin-top: 8px; }
+  .cmd code { flex: 1; min-width: 0; word-break: break-all; user-select: all; }
+  .copy { flex-shrink: 0; font: 12px ui-sans-serif, system-ui, sans-serif; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+  details.alt { margin-top: 12px; font-size: 15px; }
+  details.alt summary { cursor: pointer; color: var(--muted); }
+
+  /* Little pictures of the buttons people need to find */
+  .ui { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 1px 8px; font-size: 14px; white-space: nowrap; }
+  .toggle { width: 26px; height: 15px; border-radius: 8px; background: #1a73e8; position: relative; display: inline-block; }
+  .toggle::after { content: ""; position: absolute; right: 2px; top: 2px; width: 11px; height: 11px; border-radius: 50%; background: #fff; }
+  .kbd { font: 12px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; background: var(--surface); }
+
+  .need { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-top: 10px; }
+  .need a { display: block; text-decoration: none; color: var(--fg); background: var(--elevated); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  .need a b { display: block; }
+  .need a span { color: var(--muted); font-size: 13px; }
+
+  section.faq { margin: 40px 0 24px; }
+  section.faq h3 { font-size: 22px; font-family: ui-serif, "New York", Georgia, serif; font-weight: 500; margin: 0 0 8px; }
+  section.faq details { border-top: 1px solid var(--line); padding: 12px 0; }
+  section.faq summary { cursor: pointer; font-weight: 600; }
+  section.faq p { margin: 8px 0 0; color: var(--muted); }
+  footer { color: var(--muted); font-size: 13px; text-align: center; padding: 24px 0 48px; }
+
+  .mobile-note { display: none; }
+  html.is-mobile .mobile-note { display: block; }
+
+  /* Show only the instructions for the chosen computer and browser. Without JavaScript, everything shows. */
+  html[data-os="windows"] .os-mac, html[data-os="windows"] .os-linux,
+  html[data-os="mac"] .os-windows, html[data-os="mac"] .os-linux,
+  html[data-os="linux"] .os-windows, html[data-os="linux"] .os-mac,
+  html[data-browser="firefox"] .br-chromium,
+  html[data-browser]:not([data-browser="firefox"]) .br-firefox,
+  html:not(.has-xpi) .xpi-only,
+  html.has-xpi .no-xpi { display: none !important; }
+
+  @media (max-width: 520px) {
+    ol.steps > li { padding: 60px 16px 18px; }
+    ol.steps > li::before { left: 16px; top: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="icon.svg" alt="">
+    <h1>Install AI Sidebar</h1>
+    <p class="lede">Chat with Claude, Gemini, ChatGPT or local models next to any web page, using the accounts you already have. No API keys.</p>
+    <p class="version" id="version"></p>
+  </header>
+
+  <div class="shot"><img src="screenshot.png" alt="AI Sidebar open next to an article, summarizing it" width="1280" height="800"></div>
+
+  <p class="callout mobile-note">AI Sidebar runs on desktop computers. Open this page on your Mac, Windows or Linux computer to install it.</p>
+
+  <div class="picker" role="group" aria-label="Your computer and browser">
+    <span>Instructions for</span>
+    <span class="seg" id="os-seg">
+      <button type="button" data-os="mac">Mac</button>
+      <button type="button" data-os="windows">Windows</button>
+      <button type="button" data-os="linux">Linux</button>
+    </span>
+    <span class="seg" id="browser-seg">
+      <button type="button" data-browser="chrome">Chrome</button>
+      <button type="button" data-browser="edge">Edge</button>
+      <button type="button" data-browser="brave">Brave</button>
+      <button type="button" data-browser="firefox">Firefox</button>
+    </span>
+  </div>
+
+  <ol class="steps">
+    <!-- 1. Companion -->
+    <li>
+      <h2>Install the helper app</h2>
+      <p class="why">A small, free app that lets the sidebar use your AI accounts. It starts by itself when you sign in to your computer.</p>
+
+      <div class="os-windows">
+        <a class="btn" href="https://github.com/Juan337492/aisidebar/releases/latest/download/AI-Sidebar-Setup.cmd">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16"/></svg>
+          Download setup for Windows
+        </a>
+        <ol class="sub">
+          <li>Open the downloaded <b>AI-Sidebar-Setup.cmd</b>.</li>
+          <li>If Windows says it <i>protected your PC</i>, click <span class="ui">More info</span> then <span class="ui">Run anyway</span>. (The file isn't signed by Microsoft. It only runs our <a href="https://github.com/Juan337492/aisidebar/blob/main/install.ps1">open-source installer</a>.)</li>
+          <li>Wait for <b>Done!</b>, then close the window.</li>
+        </ol>
+        <details class="alt"><summary>Prefer PowerShell?</summary>
+          <div class="cmd"><code>irm https://raw.githubusercontent.com/Juan337492/aisidebar/main/install.ps1 | iex</code><button class="copy" type="button">Copy</button></div>
+        </details>
+      </div>
+
+      <div class="os-mac">
+        <a class="btn" href="https://github.com/Juan337492/aisidebar/releases/latest/download/AI-Sidebar-Setup-mac.zip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16"/></svg>
+          Download setup for Mac
+        </a>
+        <ol class="sub">
+          <li>Open the download so it unzips (Safari does this for you).</li>
+          <li><b>Right-click</b> <b>AI-Sidebar-Setup.command</b> and choose <span class="ui">Open</span>, then <span class="ui">Open</span> again. Right-clicking is only needed the first time, because the file isn't signed by Apple.</li>
+          <li>Wait for <b>Done!</b>, then close the window.</li>
+        </ol>
+        <details class="alt"><summary>Prefer Terminal?</summary>
+          <div class="cmd"><code>curl -fsSL https://raw.githubusercontent.com/Juan337492/aisidebar/main/install.sh | bash</code><button class="copy" type="button">Copy</button></div>
+        </details>
+      </div>
+
+      <div class="os-linux">
+        <p style="margin:0">Paste this into a terminal:</p>
+        <div class="cmd"><code>curl -fsSL https://raw.githubusercontent.com/Juan337492/aisidebar/main/install.sh | bash</code><button class="copy" type="button">Copy</button></div>
+        <p class="note">Needs Node.js 20 or newer. It sets up a systemd user service, or a desktop startup entry.</p>
+      </div>
+
+      <p class="note">You also need at least one AI tool. The installer tells you which ones are missing:</p>
+      <div class="need">
+        <a href="https://claude.com/product/claude-code"><b>Claude Code</b><span>for Claude (Pro or Max)</span></a>
+        <a href="https://antigravity.google/download"><b>Antigravity</b><span>for Gemini (Google account)</span></a>
+        <a href="https://developers.openai.com/codex/cli"><b>Codex</b><span>for ChatGPT (Plus or Pro)</span></a>
+        <a href="https://ollama.com/download"><b>Ollama</b><span>free local models, no account</span></a>
+      </div>
+    </li>
+
+    <!-- 2. Extension -->
+    <li>
+      <h2>Add the extension to <span class="browser-name">your browser</span></h2>
+
+      <div class="br-firefox">
+        <div class="xpi-only">
+          <p class="why">One click, and it updates by itself.</p>
+          <a class="btn" href="ai-sidebar-firefox.xpi">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Add to Firefox
+          </a>
+          <p class="note">Firefox asks for permission. Click <span class="ui">Continue to Installation</span>, then <span class="ui">Add</span>.</p>
+        </div>
+        <div class="no-xpi">
+          <p class="why">Until the permanent Firefox version is ready, Firefox keeps it until you restart the browser.</p>
+          <a class="btn" href="https://github.com/Juan337492/aisidebar/releases/latest/download/ai-sidebar-firefox.zip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16"/></svg>
+            Download for Firefox
+          </a>
+          <ol class="sub">
+            <li>Copy this address into Firefox's address bar and press Enter:
+              <div class="cmd"><code>about:debugging#/runtime/this-firefox</code><button class="copy" type="button">Copy</button></div>
+            </li>
+            <li>Click <span class="ui">Load Temporary Add-on…</span> and choose the zip you downloaded (no need to unzip it).</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="br-chromium">
+        <p class="why">Outside the web store, <span class="browser-name">your browser</span> asks you to load extensions yourself. It takes a minute, and you only do it once.</p>
+        <a class="btn" href="https://github.com/Juan337492/aisidebar/releases/latest/download/ai-sidebar-chrome.zip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16"/></svg>
+          Download the extension
+        </a>
+        <ol class="sub">
+          <li><b>Unzip</b> the download<span class="os-windows"> (right-click it → <span class="ui">Extract All…</span>)</span><span class="os-mac"> (Safari usually does this for you)</span>. Keep the folder somewhere it won't get deleted, such as your Documents folder.</li>
+          <li>Copy this address into the address bar and press Enter (browsers don't allow a link to it):
+            <div class="cmd"><code class="ext-url">chrome://extensions</code><button class="copy" type="button">Copy</button></div>
+          </li>
+          <li>Turn on <span class="ui">Developer mode <span class="toggle" aria-hidden="true"></span></span> <span class="edge-hint">in the corner of the page.</span></li>
+          <li>Click <span class="ui">Load unpacked</span> and choose the unzipped <b>ai-sidebar</b> folder.</li>
+          <li>Optional: click the puzzle-piece icon in the toolbar and pin <b>AI Sidebar</b>.</li>
+        </ol>
+        <p class="note">If the browser later warns about developer-mode extensions, click <span class="ui">Keep</span>. That warning appears for every extension installed this way.</p>
+      </div>
+    </li>
+
+    <!-- 3. Connect -->
+    <li>
+      <h2>Connect and sign in</h2>
+      <ol class="sub">
+        <li>Click the AI Sidebar icon in the toolbar, or press <span class="kbd">Alt</span>+<span class="kbd">Shift</span>+<span class="kbd">A</span>.</li>
+        <li>Click <span class="ui">Connect</span>. A popup appears on your computer: click <span class="ui allow-btn">Allow</span>.</li>
+        <li>Click <span class="ui">Sign in with Claude</span>, Google or ChatGPT, and log in on their official page. Ollama needs no sign-in.</li>
+      </ol>
+      <p class="note">That's it. Try <b>Use page</b> to ask about the page you're on, the camera button to ask about what's on screen, or right-click any text → <b>Explain</b>.</p>
+    </li>
+  </ol>
+
+  <section class="faq">
+    <h3>Questions</h3>
+    <details>
+      <summary>Why isn't it in the Chrome Web Store or Firefox Add-ons?</summary>
+      <p>It may be later. For now it's shared directly so you can install it today. The download comes straight from the project's public GitHub page.</p>
+    </details>
+    <details>
+      <summary>Is it safe? What can it see?</summary>
+      <p>Everything is <a href="https://github.com/Juan337492/aisidebar">open source</a>. The extension reads a page only when you click <b>Use page</b>, the camera button or the right-click menu. Your messages go to the AI you choose, through the helper app on your own computer. Nothing goes to the developer, and there's no tracking. AI Sidebar never sees your passwords: you sign in on Anthropic's, Google's or OpenAI's own page.</p>
+    </details>
+    <details>
+      <summary>Do I need to pay for anything?</summary>
+      <p>AI Sidebar is free. It uses the AI plan you already have (Claude Pro or Max, a Google account for Gemini, or ChatGPT Plus or Pro). Ollama runs free models on your own computer.</p>
+    </details>
+    <details>
+      <summary>How do I update it?</summary>
+      <p>When a new version is out, the sidebar shows <b>Update companion</b> for the helper app (one click), plus a link to the new extension. <span class="br-chromium">To update the extension, download the new zip, replace the old folder's contents, and click the reload arrow on the extensions page.</span></p>
+    </details>
+    <details>
+      <summary>How do I uninstall it?</summary>
+      <p>Remove the extension from your browser's extensions page. To remove the helper app, run <code>aisidebar-companion uninstall</code> in <span class="os-windows">PowerShell</span><span class="os-mac os-linux">Terminal</span>.</p>
+    </details>
+    <details>
+      <summary>Something didn't work</summary>
+      <p>Check the <a href="https://github.com/Juan337492/aisidebar#install">full setup guide</a>, or <a href="https://github.com/Juan337492/aisidebar/issues">open an issue</a> and describe what you saw.</p>
+    </details>
+  </section>
+
+  <footer>
+    AI Sidebar is an independent open-source project, not affiliated with Anthropic, Google or OpenAI. ·
+    <a href="https://github.com/Juan337492/aisidebar">GitHub</a> ·
+    <a href="https://github.com/Juan337492/aisidebar/blob/main/docs/amo/PRIVACY.md">Privacy</a>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var ua = navigator.userAgent;
+  var plat = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "").toLowerCase();
+
+  // Check Mac before Windows: "darwin"-style strings contain "win".
+  var os = /mac|iphone|ipad/.test(plat) ? "mac" : /win/.test(plat) ? "windows" : /linux|x11|cros/.test(plat + " " + ua.toLowerCase()) ? "linux" : "mac";
+  var browser = /firefox|fxios/i.test(ua) ? "firefox" : /edg\//i.test(ua) ? "edge" : navigator.brave ? "brave" : "chrome";
+  if (/android|iphone|ipad|mobile/i.test(ua)) root.classList.add("is-mobile");
+
+  var NAMES = { chrome: "Chrome", edge: "Edge", brave: "Brave", firefox: "Firefox" };
+  var EXT_URL = { chrome: "chrome://extensions", edge: "edge://extensions", brave: "brave://extensions" };
+
+  function apply() {
+    root.setAttribute("data-os", os);
+    root.setAttribute("data-browser", browser);
+    document.querySelectorAll("#os-seg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.os === os)); });
+    document.querySelectorAll("#browser-seg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.browser === browser)); });
+    document.querySelectorAll(".browser-name").forEach(function (el) { el.textContent = NAMES[browser]; });
+    document.querySelectorAll(".ext-url").forEach(function (el) { el.textContent = EXT_URL[browser] || "chrome://extensions"; });
+    document.querySelectorAll(".edge-hint").forEach(function (el) {
+      el.textContent = browser === "edge" ? "on the left side of the page." : "in the top-right corner of the page.";
+    });
+    document.querySelectorAll(".allow-btn").forEach(function (el) { el.textContent = os === "windows" ? "Yes" : "Allow"; });
+  }
+
+  document.getElementById("os-seg").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (b) { os = b.dataset.os; apply(); }
+  });
+  document.getElementById("browser-seg").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (b) { browser = b.dataset.browser; apply(); }
+  });
+
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var text = btn.parentElement.querySelector("code").textContent;
+      var done = function () { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1500); };
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () {});
+    });
+  });
+
+  apply();
+
+  // A signed Firefox add-on is published next to this page when one exists.
+  fetch("ai-sidebar-firefox.xpi", { method: "HEAD" }).then(function (r) {
+    if (r.ok) root.classList.add("has-xpi");
+  }, function () {});
+
+  // Latest version, from GitHub (the download buttons work without this).
+  fetch("https://api.github.com/repos/Juan337492/aisidebar/releases/latest", { headers: { accept: "application/vnd.github+json" } })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (rel) {
+      if (!rel || !rel.tag_name) return;
+      var date = new Date(rel.published_at).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+      document.getElementById("version").textContent = "Version " + rel.tag_name.replace(/^v/, "") + " · released " + date;
+    }, function () {});
+})();
+</script>
+</body>
+</html>

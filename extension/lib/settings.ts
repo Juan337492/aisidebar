@@ -12,6 +12,10 @@ export interface Selection {
   effort?: string;
 }
 
+import { DEFAULT_ACTIONS, type QuickAction } from "./actions";
+
+export { DEFAULT_ACTIONS, type QuickAction };
+
 export interface Settings {
   companionUrl: string;
   token: string;
@@ -20,6 +24,9 @@ export interface Settings {
   theme: "system" | "light" | "dark";
   /** Custom instructions added to every new conversation. */
   instructions: string;
+  actions: QuickAction[];
+  /** Release version the user chose to stop hearing about. */
+  dismissedUpdate?: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -29,6 +36,7 @@ export const DEFAULT_SETTINGS: Settings = {
   selection: {},
   theme: "system",
   instructions: "",
+  actions: DEFAULT_ACTIONS,
 };
 
 const KEY = "settings";

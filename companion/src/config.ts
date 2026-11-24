@@ -16,6 +16,8 @@ export interface Config {
   token: string;
   /** Optional absolute paths overriding CLI auto-detection. */
   binaries: Record<string, string | undefined>;
+  /** Ollama's address, if it isn't http://127.0.0.1:11434. */
+  ollamaUrl?: string;
 }
 
 export function loadConfig(): Config {
@@ -31,6 +33,7 @@ export function loadConfig(): Config {
     port: Number(process.env.AISIDEBAR_PORT ?? cfg.port ?? 8765),
     token: cfg.token ?? randomBytes(24).toString("base64url"),
     binaries: cfg.binaries ?? {},
+    ...(cfg.ollamaUrl ? { ollamaUrl: cfg.ollamaUrl } : {}),
   };
   if (!cfg.token || cfg.port === undefined || !cfg.binaries) saveConfig(full);
   return full;

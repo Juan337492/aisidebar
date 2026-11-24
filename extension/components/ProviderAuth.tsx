@@ -4,6 +4,9 @@ import { cancelLogin, logout, startLogin } from "@/lib/companion";
 import type { Settings } from "@/lib/settings";
 import type { ProviderStatus } from "@/lib/types";
 
+const ACCOUNT: Record<string, string> = { claude: "Claude", antigravity: "Google", codex: "ChatGPT" };
+const CLI: Record<string, string> = { claude: "Claude Code", antigravity: "Antigravity", codex: "Codex" };
+
 const btn = "rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50";
 export const primaryBtn = `${btn} bg-accent text-accent-fg`;
 export const secondaryBtn = `${btn} border border-line hover:bg-elevated`;
@@ -25,6 +28,7 @@ export function ProviderAuth({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [confirming, setConfirming] = useState<"switch" | "signout">();
   const act = async (fn: () => Promise<void>) => {
     setBusy(true);
     setError(undefined);
@@ -58,7 +62,7 @@ export function ProviderAuth({
           <Loader2 size={13} className="animate-spin" /> Finish signing in on the page that just opened
         </p>
         <p className="text-muted">
-          Use your usual {p.id === "claude" ? "Claude" : "Google"} account there (email, password, code or SSO). This updates
+          Use your usual {ACCOUNT[p.id] ?? p.displayName} account there (email, password, code or SSO). This updates
           automatically when you're done.
         </p>
         <div className="flex flex-wrap gap-2">
@@ -91,26 +95,43 @@ export function ProviderAuth({
   }
 
   if (!showSignOut || !p.canSignOut) return null;
-  const confirmText =
-    `Sign out of ${p.displayName} on this computer?\n\n` +
-    `This also signs out ${p.id === "claude" ? "Claude Code" : "Antigravity"} everywhere else on this computer (terminal, other apps, etc.).`;
+  if (confirming) {
+    return (
+      <div className="space-y-2 rounded-lg bg-elevated p-3 text-xs">
+        <p>
+          {confirming === "switch" ? "Switch accounts" : "Sign out"} of {p.displayName} on this computer? This also signs out{" "}
+          {CLI[p.id] ?? "this tool"} everywhere else on this computer (terminal, other apps).
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className={confirming === "signout" ? `${secondaryBtn} text-danger` : primaryBtn}
+            disabled={busy}
+            onClick={() => {
+              const which = confirming;
+              setConfirming(undefined);
+              act(async () => {
+                await logout(settings, p.id);
+                if (which === "switch") await startLogin(settings, p.id);
+              });
+            }}
+          >
+            {confirming === "switch" ? "Sign out and switch" : "Sign out"}
+          </button>
+          <button type="button" className={secondaryBtn} onClick={() => setConfirming(undefined)}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className={secondaryBtn}
-          disabled={busy}
-          onClick={() => confirm(confirmText) && act(async () => { await logout(settings, p.id); await startLogin(settings, p.id); })}
-        >
+        <button type="button" className={secondaryBtn} disabled={busy} onClick={() => setConfirming("switch")}>
           Change account
         </button>
-        <button
-          type="button"
-          className={`${secondaryBtn} text-danger`}
-          disabled={busy}
-          onClick={() => confirm(confirmText) && act(() => logout(settings, p.id))}
-        >
+        <button type="button" className={`${secondaryBtn} text-danger`} disabled={busy} onClick={() => setConfirming("signout")}>
           Sign out
         </button>
       </div>

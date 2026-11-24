@@ -54,6 +54,8 @@ export function which(name: string): string | undefined {
  * text through cmd.exe would be unsafe, so npm's .cmd shims are resolved to `node <script>` instead.
  */
 export function spawnTarget(bin: string): { cmd: string; args: string[] } {
+  // A plain Node script (handy for custom wrappers and tests) runs with this Node on every OS.
+  if (/\.(c|m)?js$/i.test(bin)) return { cmd: process.execPath, args: [bin] };
   if (!IS_WINDOWS || !/\.(cmd|bat)$/i.test(bin)) return { cmd: bin, args: [] };
   const script = parseCmdShim(readFileSync(bin, "utf8"));
   if (script) return { cmd: process.execPath, args: [join(dirname(bin), script)] };
@@ -84,7 +86,7 @@ export function run(
     } catch (e) {
       return resolve({ code: 1, stdout: "", stderr: (e as Error).message });
     }
-    execFile(
+    const child = execFile(
       target.cmd,
       [...target.args, ...args],
       { cwd: WORKSPACE_DIR, env: childEnv(), timeout: timeoutMs, maxBuffer: 8 * 1024 * 1024, windowsHide: true },
@@ -93,12 +95,16 @@ export function run(
         resolve({ code, stdout: String(stdout), stderr: String(stderr) });
       },
     );
+    // Nothing to send: close stdin so CLIs that read it when it isn't a terminal don't wait forever.
+    child.stdin?.end();
   });
 }
 
 /**
  * Spawn a CLI and yield each stdout line. Kills the process when `signal` aborts.
- * Throws with stderr if the process exits non-zero without having produced output.
+ * Throws with stderr if the process exits non-zero, even after some output: CLIs print a session line
+ * first, so a crash or auth error later in the turn must not look like an empty answer.
+ * (Callers that stop reading once they have a final result never reach this check.)
  */
 export async function* streamLines(
   bin: string,
@@ -133,16 +139,14 @@ export async function* streamLines(
     });
   });
 
-  let produced = false;
   try {
     const rl = createInterface({ input: child.stdout!, crlfDelay: Infinity });
     for await (const line of rl) {
       if (!line.trim()) continue;
-      produced = true;
       yield line;
     }
     const code = await exited;
-    if (code !== 0 && !signal.aborted && !produced) {
+    if (code !== 0 && !signal.aborted) {
       throw new Error(stderr.trim() || `${bin} exited with code ${code}`);
     }
   } finally {

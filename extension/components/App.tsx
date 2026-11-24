@@ -1,21 +1,23 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { browser } from "wxt/browser";
-import { ArrowLeft, History as HistoryIcon, Settings as SettingsIcon, SquarePen } from "lucide-react";
+import { ArrowLeft, Download, FileText, History as HistoryIcon, Quote, Settings as SettingsIcon, SquarePen } from "lucide-react";
 import { useSettings, useTheme } from "@/lib/settings";
 import { useChat } from "@/lib/useChat";
 import { resolveTarget, useProviders } from "@/lib/useProviders";
-import { loadChat, useChatList } from "@/lib/chats";
+import { downloadMarkdown, loadChat, useChatList, type Attachment } from "@/lib/chats";
+import { pageAttachment, readActivePage, requestPageAccess } from "@/lib/page";
+import { useUpdate } from "@/lib/useUpdate";
 import { PENDING_KEY, takePending } from "@/lib/pending";
 import { Composer, type Injection } from "./Composer";
 import { MessageView } from "./MessageView";
 import { ModelPicker } from "./ModelPicker";
 import { History } from "./History";
-import { SettingsPanel } from "./Settings";
+import { SettingsPanel, UpdateCard } from "./Settings";
 import { IconButton, ProviderMark, timeAgo } from "./ui";
 import { ProviderAuth, primaryBtn, secondaryBtn } from "./ProviderAuth";
 import { usePairing } from "@/lib/usePairing";
 import { ALLOW_BUTTON, CopyCommand, INSTALL_CMD, IS_WINDOWS, SETUP_URL, WINDOWS_SETUP_URL } from "./CopyCommand";
-import { isProviderEnabled, type Settings } from "@/lib/settings";
+import { isProviderEnabled, type QuickAction, type Settings } from "@/lib/settings";
 import type { ProvidersState } from "@/lib/useProviders";
 
 type View = "chat" | "history" | "settings";
@@ -30,7 +32,10 @@ export function App() {
   useTheme(settings?.theme);
   const providersState = useProviders(settings);
   const { providers, error } = providersState;
-  const { chat, busy, status, send, stop, open, reset } = useChat();
+  const { chat, busy, status, send, regenerate, editFrom, stop, open, reset, rename } = useChat();
+  const updates = useUpdate(settings, !error && !!settings?.token);
+  const [renaming, setRenaming] = useState(false);
+  const [actionError, setActionError] = useState<string>();
   const [view, setView] = useState<View>("chat");
   const [inject, setInject] = useState<Injection>();
   const recents = useChatList().slice(0, 4);
@@ -76,6 +81,32 @@ export function App() {
   if (!settings) return null;
 
   const needsSetup = !!error || !target;
+  const imagesSupported = providers.find((p) => p.id === target?.provider)?.images ?? false;
+  const showUpdate =
+    !!updates.info &&
+    (updates.info.updateAvailable || updates.extensionOutdated) &&
+    settings.dismissedUpdate !== updates.info.latest;
+
+  /** Home-screen quick action: reads the page (or its highlighted text) and sends the action's prompt. */
+  const runAction = (a: QuickAction) => {
+    setActionError(undefined);
+    // The permission prompt must start synchronously inside the click.
+    requestPageAccess().then(async (ok) => {
+      if (!ok) return setActionError("Page access was declined.");
+      if (!target) return;
+      try {
+        const page = await readActivePage();
+        let atts: Attachment[];
+        if (a.context === "page") atts = [pageAttachment(page)];
+        else if (page.selection) atts = [{ kind: "selection", text: page.selection, url: page.url, title: page.title }];
+        else return setActionError(`Highlight some text on the page first, then click “${a.title}”.`);
+        stickRef.current = true;
+        send(settings, target, a.prompt, atts);
+      } catch (e) {
+        setActionError((e as Error).message);
+      }
+    });
+  };
   const picker = <ModelPicker settings={settings} providers={providers} disabled={busy} onChange={(selection) => update({ selection })} />;
 
   const composer = (
@@ -84,6 +115,7 @@ export function App() {
       disabled={!target}
       inject={inject}
       picker={picker}
+      imagesSupported={imagesSupported}
       onStop={stop}
       placeholder={chat.messages.length ? "Reply…" : undefined}
       onSend={(text, atts) => {
@@ -106,9 +138,40 @@ export function App() {
             <ArrowLeft size={17} />
           </IconButton>
         )}
-        <h1 className="min-w-0 flex-1 truncate px-1 text-[13px] font-medium">
-          {view === "history" ? "Chats" : view === "settings" ? "Settings" : chat.messages.length ? chat.title : ""}
-        </h1>
+        {view === "chat" && renaming ? (
+          <input
+            autoFocus
+            aria-label="Chat name"
+            defaultValue={chat.title}
+            onBlur={(e) => {
+              rename(e.target.value);
+              setRenaming(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+              if (e.key === "Escape") setRenaming(false);
+            }}
+            className="min-w-0 flex-1 rounded bg-elevated px-1 py-0.5 text-[13px] font-medium outline-none"
+          />
+        ) : view === "chat" && chat.messages.length ? (
+          <button
+            type="button"
+            title="Rename"
+            onClick={() => setRenaming(true)}
+            className="min-w-0 flex-1 truncate px-1 text-left text-[13px] font-medium hover:text-muted"
+          >
+            {chat.title}
+          </button>
+        ) : (
+          <h1 className="min-w-0 flex-1 truncate px-1 text-[13px] font-medium">
+            {view === "history" ? "Chats" : view === "settings" ? "Settings" : ""}
+          </h1>
+        )}
+        {view === "chat" && chat.messages.length > 0 && !busy && (
+          <IconButton label="Export as Markdown" onClick={() => downloadMarkdown(chat, (m) => modelName(m.provider, m.model))}>
+            <Download size={16} />
+          </IconButton>
+        )}
         <IconButton
           label="New chat"
           onClick={() => {
@@ -158,6 +221,30 @@ export function App() {
                   <span className="mr-2 text-accent">✳</span>
                   {greeting()}
                 </h2>
+                {showUpdate && (
+                  <div className="mb-6">
+                    <UpdateCard u={updates} onDismiss={() => update({ dismissedUpdate: updates.info?.latest })} />
+                  </div>
+                )}
+                {!needsSetup && settings.actions.length > 0 && (
+                  <div className="mb-6">
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      {settings.actions.map((a) => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => runAction(a)}
+                          title={a.context === "page" ? "Uses this page" : "Uses the text you've highlighted on the page"}
+                          className="flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-xs hover:bg-elevated"
+                        >
+                          {a.context === "page" ? <FileText size={12} className="text-muted" /> : <Quote size={12} className="text-muted" />}
+                          {a.title}
+                        </button>
+                      ))}
+                    </div>
+                    {actionError && <p className="mt-2 text-center text-xs text-danger">{actionError}</p>}
+                  </div>
+                )}
                 {needsSetup && (
                   <SetupCard
                     settings={settings}
@@ -198,6 +285,23 @@ export function App() {
                     streaming={busy && i === chat.messages.length - 1}
                     status={status}
                     modelName={modelName(m.provider, m.model)}
+                    isLast={i === chat.messages.length - 1}
+                    onRetry={
+                      target && !busy
+                        ? () => {
+                            stickRef.current = true;
+                            regenerate(settings, target);
+                          }
+                        : undefined
+                    }
+                    onEdit={
+                      m.role === "user" && !busy
+                        ? () => {
+                            const removed = editFrom(m.id);
+                            if (removed) setInject({ id: crypto.randomUUID(), text: removed.text, attachments: removed.attachments ?? [] });
+                          }
+                        : undefined
+                    }
                   />
                 ))}
               </div>
@@ -231,7 +335,7 @@ function SetupCard({
       <div className={card}>
         <p className="font-medium">Install the companion</p>
         <p className="text-xs text-muted">
-          AI Sidebar needs a small free app on your computer to reach your Claude and Google accounts.
+          AI Sidebar needs a small free app on your computer to reach your AI accounts.
           {IS_WINDOWS ? (
             <>
               {" "}
@@ -262,7 +366,7 @@ function SetupCard({
         <p className="text-xs text-muted">
           {pairing.waiting
             ? `Look for the “AI Sidebar” popup on your computer and click ${ALLOW_BUTTON}.`
-            : "AI Sidebar uses the companion app to reach your Claude and Google accounts."}
+            : "AI Sidebar uses the companion app to reach your AI accounts."}
         </p>
         <button type="button" className={primaryBtn} disabled={pairing.waiting} onClick={() => pairing.connect()}>
           {pairing.waiting ? "Waiting for approval…" : "Connect"}
@@ -276,7 +380,7 @@ function SetupCard({
   return (
     <div className={card}>
       <p className="font-medium">Sign in to get started</p>
-      <p className="text-xs text-muted">Use your Claude or Google account. Sign-in happens on their official page.</p>
+      <p className="text-xs text-muted">Use your Claude, Google or ChatGPT account (sign-in happens on their official page), or start Ollama for local models.</p>
       <ul className="space-y-3">
         {enabled.map((p) => (
           <li key={p.id} className="space-y-2">

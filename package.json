@@ -17,6 +17,7 @@
     "companion:uninstall": "npm run uninstall-service -w companion",
     "zip:firefox": "npm run zip:firefox -w extension",
     "submit:firefox": "npm run submit:firefox -w extension",
-    "release": "node scripts/release.mjs"
+    "release": "node scripts/release.mjs",
+    "test": "npm test -w companion && npm test -w extension"
   }
 }

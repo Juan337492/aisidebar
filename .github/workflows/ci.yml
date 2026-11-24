@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build extension (Chrome and Firefox)
+        run: npm run build
+      - name: Lint Firefox build
+        if: runner.os == 'Linux'
+        working-directory: extension
+        run: npx web-ext lint -s .output/firefox-mv3 --self-hosted
+      - name: Pack companion
+        shell: bash
+        run: |
+          npm run build -w companion
+          npm pack -w companion --pack-destination "$RUNNER_TEMP"
+          mv "$RUNNER_TEMP"/aisidebar-companion-*.tgz "$RUNNER_TEMP/aisidebar-companion.tgz"
+
+      # Real install, auto-start and uninstall on each OS, using the package built above.
+      - name: Installer (macOS / Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          AISIDEBAR_TGZ: ${{ runner.temp }}/aisidebar-companion.tgz
+        run: bash install.sh
+      - name: Installer (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        env:
+          AISIDEBAR_TGZ: ${{ runner.temp }}\aisidebar-companion.tgz
+        run: .\install.ps1
+      - name: Companion is running in the background
+        shell: bash
+        run: |
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8765/health && exit 0; sleep 1; done
+          echo "companion did not start"; cat ~/.aisidebar/companion.log || true; exit 1
+      - name: Windows diagnostics
+        if: failure() && runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $d = "$env:USERPROFILE\.aisidebar"
+          Write-Host "--- files"; Get-ChildItem $d -Force | Format-Table Name, Length
+          Write-Host "--- launcher"; Get-Content "$d\start-companion.ps1"
+          Write-Host "--- Run key"; reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v AISidebarCompanion
+          Write-Host "--- log"; Get-Content "$d\companion.log" -ErrorAction SilentlyContinue
+          Write-Host "--- node processes"; Get-CimInstance Win32_Process -Filter "name='node.exe'" | Select-Object ProcessId, CommandLine | Format-List
+          Write-Host "--- run the launcher visibly"
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$d\start-companion.ps1"
+          Start-Sleep 5
+          Get-Content "$d\companion.log" -ErrorAction SilentlyContinue
+          Get-CimInstance Win32_Process -Filter "name='node.exe'" | Select-Object ProcessId, CommandLine | Format-List
+          Write-Host "--- run start in the foreground for 5s"
+          $cli = Join-Path (npm.cmd prefix -g).Trim() "node_modules\aisidebar-companion\dist\cli.js"
+          $p = Start-Process node.exe -ArgumentList "`"$cli`" start" -PassThru -NoNewWindow -RedirectStandardOutput "$env:RUNNER_TEMP\o.txt" -RedirectStandardError "$env:RUNNER_TEMP\e.txt"
+          Start-Sleep 5; Get-Content "$env:RUNNER_TEMP\o.txt", "$env:RUNNER_TEMP\e.txt"
+          curl.exe -s http://127.0.0.1:8765/health
+      - name: Auth checks against the installed companion
+        shell: bash
+        run: |
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8765/providers)" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Origin: https://evil.example' http://127.0.0.1:8765/health)" = 403
+      - name: Uninstall stops it
+        shell: bash
+        run: |
+          aisidebar-companion uninstall || "$HOME/.aisidebar/node/bin/aisidebar-companion" uninstall
+          sleep 2
+          ! curl -fs http://127.0.0.1:8765/health
