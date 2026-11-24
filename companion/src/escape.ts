@@ -9,12 +9,15 @@ export function psq(s: string) {
   return `'${s.replace(/'/g, "''")}'`;
 }
 
-export function windowsLauncherScript(node: string, args: string[]): string {
+export function windowsLauncherScript(node: string, args: string[], log?: string): string {
   // Start-Process needs embedded double quotes around arguments with spaces (Windows paths can't contain ").
   const list = args.map((a) => psq(`"${a}"`)).join(", ");
+  const start = `Start-Process -WindowStyle Hidden -FilePath ${psq(node)} -ArgumentList @(${list})`;
   return (
     `# Starts the AI Sidebar companion in the background, with no window. Created by "aisidebar-companion install".\r\n` +
-    `Start-Process -WindowStyle Hidden -FilePath ${psq(node)} -ArgumentList @(${list})\r\n`
+    (log
+      ? `try { ${start} -ErrorAction Stop } catch { Add-Content -Path ${psq(log)} -Value "$(Get-Date -Format o) error Launcher: $_" }\r\n`
+      : `${start}\r\n`)
   );
 }
 

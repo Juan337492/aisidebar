@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, truncateSync, writeFileSync } from "node:fs";
+import { appendFileSync, closeSync, copyFileSync, existsSync, openSync, mkdirSync, readFileSync, rmSync, statSync, truncateSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
@@ -123,10 +123,17 @@ async function main() {
  */
 function supervise() {
   let failures = 0;
+  rotateLog();
+  appendFileSync(LOG_FILE, `${new Date().toISOString()} info Supervisor started (pid ${process.pid}, node ${process.version}).\n`);
   const launch = () => {
     const startedAt = Date.now();
-    const child = spawn(process.execPath, [...NODE_ARGS, SCRIPT, "start", "--log"], { stdio: "ignore", windowsHide: true });
+    // Crashes before the companion's own logging starts still land in the log.
+    const log = openSync(LOG_FILE, "a");
+    const child = spawn(process.execPath, [...NODE_ARGS, SCRIPT, "start", "--log"], { stdio: ["ignore", log, log], windowsHide: true });
+    closeSync(log);
+    child.on("error", (e) => appendFileSync(LOG_FILE, `${new Date().toISOString()} error Couldn't start the companion: ${e.message}\n`));
     child.on("exit", (code) => {
+      if (code !== 0) appendFileSync(LOG_FILE, `${new Date().toISOString()} error The companion exited with code ${code}.\n`);
       if (code === 0 || code === EXIT_PORT_IN_USE) process.exit(0);
       failures = Date.now() - startedAt > 60_000 ? 1 : failures + 1;
       if (failures > 8) {
@@ -176,7 +183,8 @@ async function startService() {
     if (await healthy()) return void console.log("Running now, and it will start automatically when you sign in.");
     await sleep(250);
   }
-  console.error(`Installed auto-start, but the companion didn't answer yet. Check ${LOG_FILE}.`);
+  console.error(`Installed auto-start, but the companion didn't start. Check ${LOG_FILE}.`);
+  process.exitCode = 1;
 }
 
 function removeService() {
@@ -295,7 +303,7 @@ function winLauncherArgs() {
 
 function installWindows() {
   // A small PowerShell launcher starts the supervisor hidden (VBScript is being phased out of Windows).
-  writeFileSync(WIN_LAUNCHER, windowsLauncherScript(process.execPath, [...NODE_ARGS, SCRIPT, "service"]));
+  writeFileSync(WIN_LAUNCHER, windowsLauncherScript(process.execPath, [...NODE_ARGS, SCRIPT, "service"], LOG_FILE));
   rmSync(WIN_OLD_LAUNCHER, { force: true });
   const value = ["powershell.exe", ...winLauncherArgs().map((a) => (a === WIN_LAUNCHER ? `"${a}"` : a))].join(" ");
   execFileSync("reg", ["add", WIN_RUN_KEY, "/v", WIN_RUN_VALUE, "/t", "REG_SZ", "/d", value, "/f"], { stdio: "ignore" });
