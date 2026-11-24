@@ -170,7 +170,9 @@ async function startService() {
     execFileSync("launchctl", ["load", "-w", PLIST]);
   } else if (process.platform === "win32") {
     await stopRunning();
-    spawn("powershell.exe", winLauncherArgs(), { detached: true, stdio: "ignore", windowsHide: true }).unref();
+    // Start the supervisor directly. (A detached PowerShell gets no console and quietly exits, so the
+    // PowerShell launcher is only used by Windows itself at sign-in.)
+    spawn(process.execPath, [...NODE_ARGS, SCRIPT, "service"], { detached: true, stdio: "ignore", windowsHide: true }).unref();
   } else if (existsSync(SYSTEMD_UNIT)) {
     await stopRunning();
     execFileSync("systemctl", ["--user", "restart", "aisidebar-companion.service"], { stdio: "ignore" });
