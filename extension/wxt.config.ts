@@ -14,9 +14,10 @@ export default defineConfig({
   },
   manifest: ({ browser }) => ({
     name: "AI Sidebar",
-    description: "Chat with Claude and Gemini next to any page, using your own Claude and Google sign-ins.",
+    description: "Chat with Claude, Gemini, ChatGPT or local models next to any page, using your own sign-ins.",
     homepage_url: "https://github.com/Juan337492/aisidebar",
-    permissions: ["storage", "tabs", "scripting", "contextMenus", "activeTab"],
+    // unlimitedStorage: chat history (with shared pages and screenshots) can outgrow the 10 MB default.
+    permissions: ["storage", "unlimitedStorage", "tabs", "scripting", "contextMenus", "activeTab"],
     // The local companion app. Page reading asks for <all_urls> only when you first use it.
     host_permissions: ["http://127.0.0.1/*", "http://localhost/*"],
     optional_host_permissions: ["<all_urls>"],

@@ -8,7 +8,7 @@
 #   1. Checks for Node.js 20+ (installs it with winget if it's missing).
 #   2. Installs the AI Sidebar companion from the latest GitHub Release.
 #   3. Starts it now and every time you sign in to Windows.
-#   4. Checks whether Claude Code and Antigravity are installed.
+#   4. Checks which AI tools are installed (Claude Code, Antigravity, Codex, Ollama).
 #
 # It never asks for passwords, doesn't need administrator rights, and doesn't touch your projects.
 # Written for Windows PowerShell 5.1 (built into Windows 10/11) as well as PowerShell 7.
@@ -17,7 +17,8 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
 $Repo = "Juan337492/aisidebar"
-$Tgz = "https://github.com/$Repo/releases/latest/download/aisidebar-companion.tgz"
+# AISIDEBAR_TGZ lets CI test a locally built package instead of the published one.
+$Tgz = if ($env:AISIDEBAR_TGZ) { $env:AISIDEBAR_TGZ } else { "https://github.com/$Repo/releases/latest/download/aisidebar-companion.tgz" }
 $Releases = "https://github.com/$Repo/releases/latest"
 
 function Say($msg)  { Write-Host $msg -ForegroundColor White }
@@ -80,18 +81,27 @@ $claude = (Get-Command claude -ErrorAction SilentlyContinue) -or (Test-Path "$en
 if ($claude) { Ok "Claude Code found (for Claude)" }
 else { Warn "Claude Code not found. For Claude, install it: https://claude.com/product/claude-code" }
 
+$found = [bool]$claude
 $agy = (Get-Command antigravity -ErrorAction SilentlyContinue) -or (Get-Command agy -ErrorAction SilentlyContinue) -or (Test-Path "$env:USERPROFILE\.t3\tools\antigravity-acp")
-if ($agy) { Ok "Antigravity found (for Gemini)" }
+if ($agy) { Ok "Antigravity found (for Gemini)"; $found = $true }
 else { Warn "Antigravity not found. For Gemini, install it: https://antigravity.google/download" }
+
+if (Get-Command codex -ErrorAction SilentlyContinue) { Ok "Codex found (for ChatGPT)"; $found = $true }
+else { Warn "Codex not found (optional). For ChatGPT: npm install -g @openai/codex" }
+
+if ((Get-Command ollama -ErrorAction SilentlyContinue) -or (Test-Path "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe")) { Ok "Ollama found (for local models)"; $found = $true }
+else { Warn "Ollama not found (optional). For free local models: https://ollama.com/download" }
+if (-not $found) { Warn "Install at least one of the tools above to chat." }
 
 # Done -------------------------------------------------------------------------
 Write-Host ""
 Say "Done! Last steps:"
-Write-Host "  1. Get the browser extension: $Releases"
+Write-Host "  1. Get the browser extension (step-by-step guide: https://juan337492.github.io/aisidebar/)"
+Write-Host "     from $Releases"
 Write-Host "       - Chrome or Edge: download ai-sidebar-chrome.zip, unzip it, open chrome://extensions"
 Write-Host "         (edge://extensions in Edge), turn on Developer mode, click 'Load unpacked',"
 Write-Host "         and pick the unzipped folder."
 Write-Host "       - Firefox: see the instructions on that page."
 Write-Host "  2. Open the sidebar (toolbar icon, or Alt+Shift+A) and click Connect."
 Write-Host "     Click Yes in the popup."
-Write-Host "  3. Click 'Sign in with Claude' or 'Sign in with Google'."
+Write-Host "  3. Sign in to Claude, Google or ChatGPT from the sidebar (Ollama needs no sign-in)."

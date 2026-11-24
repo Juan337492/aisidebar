@@ -1,4 +1,4 @@
-import type { ChatEvent, ChatRequest, ProviderStatus } from "./types";
+import type { ChatEvent, ChatRequest, ProviderStatus, UpdateInfo } from "./types";
 import type { Settings } from "./settings";
 
 export class CompanionError extends Error {
@@ -94,4 +94,13 @@ export async function cancelLogin(s: Settings, provider: string): Promise<void> 
 
 export async function logout(s: Settings, provider: string): Promise<void> {
   await call(s, `/providers/${encodeURIComponent(provider)}/logout`, { method: "POST" });
+}
+
+export async function getUpdate(s: Settings, refresh = false): Promise<UpdateInfo> {
+  return (await call(s, `/update${refresh ? "?refresh=1" : ""}`)).json();
+}
+
+/** Asks the companion to install the newest release and restart itself. */
+export async function startUpdate(s: Settings): Promise<UpdateInfo> {
+  return (await call(s, "/update", { method: "POST" })).json();
 }

@@ -5,11 +5,16 @@ import { askToPair } from "./pairing.ts";
 import type { Config } from "./config.ts";
 import { claudeAdapter } from "./providers/claude.ts";
 import { antigravityAdapter } from "./providers/antigravity.ts";
+import { codexAdapter } from "./providers/codex.ts";
+import { ollamaAdapter } from "./providers/ollama.ts";
+import { checkForUpdate, startSelfUpdate } from "./update.ts";
+import type { UpdateInfo } from "./types.ts";
 
 import { VERSION } from "./config.ts";
 
 export { VERSION };
-const MAX_BODY = 2 * 1024 * 1024;
+// Room for a few screenshots alongside a long page.
+const MAX_BODY = 24 * 1024 * 1024;
 
 function isExtensionOrigin(origin: string | undefined): boolean {
   return !!origin && /^(chrome-extension|moz-extension|safari-web-extension):\/\/[\w.-]+$/.test(origin);
@@ -38,19 +43,25 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
+export function defaultAdapters(cfg: Config): Adapter[] {
+  return [
+    claudeAdapter(() => cfg.binaries.claude),
+    antigravityAdapter(() => cfg.binaries.antigravity),
+    codexAdapter(() => cfg.binaries.codex),
+    ollamaAdapter(() => cfg.ollamaUrl),
+  ];
+}
+
 function json(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { "content-type": "application/json" });
   res.end(JSON.stringify(body));
 }
 
-export function startServer(cfg: Config) {
-  const adapters: Adapter[] = [
-    claudeAdapter(() => cfg.binaries.claude),
-    antigravityAdapter(() => cfg.binaries.antigravity),
-  ];
+export function startServer(cfg: Config, adapters: Adapter[] = defaultAdapters(cfg)) {
   const byId = new Map(adapters.map((a) => [a.id, a]));
   const logins = new Map<string, LoginState & { proc?: LoginProcess }>();
   let pairing: Promise<boolean> | undefined;
+  let updating: { state: "running" | "failed"; message?: string } | undefined;
 
   const withLogin = async (a: Adapter, force: boolean) => {
     const st = await a.status(force);
@@ -98,18 +109,21 @@ export function startServer(cfg: Config) {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
     if (url.pathname === "/health") return json(res, 200, { ok: true, name: "aisidebar-companion", version: VERSION });
 
-    // Pairing: an extension asks for the token; the person at the Mac approves it in a native dialog.
+    // Pairing: an extension asks for the token; the person at the computer approves it in a native dialog.
     if (req.method === "POST" && url.pathname === "/pair") {
       if (!origin) return json(res, 403, { error: "Pairing must come from the extension." });
-      if (pairing) return json(res, 409, { error: "A pairing request is already waiting for approval on your Mac." });
+      if (pairing) return json(res, 409, { error: "A connection request is already waiting for approval on this computer." });
       try {
         pairing = askToPair(origin);
         const ok = await pairing;
         return ok
           ? json(res, 200, { token: cfg.token })
-          : json(res, 403, { error: "The connection wasn't allowed on your Mac." });
+          : json(res, 403, { error: "The connection wasn't allowed on this computer." });
       } catch {
-        return json(res, 501, { error: "Automatic pairing only works on macOS. Paste the token from the companion's output instead." });
+        return json(res, 501, {
+          error:
+            "This computer can't show the approval popup. Run `aisidebar-companion token` and paste the token under Settings → Manual setup.",
+        });
       } finally {
         pairing = undefined;
       }
@@ -169,6 +183,44 @@ export function startServer(cfg: Config) {
           if (!ac.signal.aborted) send({ type: "error", message: e instanceof Error ? e.message : String(e) });
         }
         return void res.end();
+      }
+
+      if (url.pathname === "/update") {
+        if (req.method === "POST") {
+          const check = await checkForUpdate();
+          if (!check.updateAvailable) return json(res, 409, { error: "You already have the latest version." });
+          if (!check.canSelfUpdate) return json(res, 400, { error: "This companion can't update itself. Run the installer again." });
+          if (updating?.state !== "running") {
+            updating = { state: "running" };
+            const mine = updating;
+            startSelfUpdate().then(
+              () => {
+                // Normally the service restart ends this process first; if not (no service), stay usable.
+                if (updating === mine) updating = { state: "failed", message: "Updated. Restart the companion to use the new version." };
+              },
+              (e: Error) => {
+                if (updating === mine) updating = { state: "failed", message: e.message };
+              },
+            );
+          }
+        }
+        const info: UpdateInfo = {
+          ...(await checkForUpdate(url.searchParams.get("refresh") === "1")),
+          updating: updating?.state,
+          message: updating?.message,
+        };
+        return json(res, 200, info);
+      }
+
+      // Used by `aisidebar-companion install/uninstall/update` to stop the running copy.
+      if (req.method === "POST" && url.pathname === "/shutdown") {
+        if (origin) return json(res, 403, { error: "Only the companion's own command can stop it." });
+        json(res, 200, { ok: true });
+        setTimeout(() => {
+          server.close();
+          process.exit(0);
+        }, 100);
+        return;
       }
 
       return json(res, 404, { error: "Not found" });

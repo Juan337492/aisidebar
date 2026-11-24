@@ -1,5 +1,5 @@
 // Shared wire types between the companion and the extension.
-// Copied from companion/src/types.ts — keep in sync.
+// extension/lib/types.ts must stay identical (a test checks this).
 
 export interface ModelOption {
   id: string;
@@ -30,6 +30,8 @@ export interface ProviderStatus {
   canSignOut?: boolean;
   /** Present while a sign-in started from the sidebar is running or just failed. */
   login?: LoginState;
+  /** Whether this provider's models can look at images (screenshots). */
+  images?: boolean;
 }
 
 export interface LoginState {
@@ -47,8 +49,33 @@ export interface ChatRequest {
   effort?: string;
   /** Provider-side session/conversation id to continue. */
   sessionId?: string;
-  /** Extra instructions sent with the first turn. */
+  /** Extra instructions from the user's settings. */
   system?: string;
+  /** Screenshots or pasted images for this turn (base64, no data: prefix). */
+  images?: ChatImage[];
+}
+
+export interface ChatImage {
+  mediaType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+  data: string;
+}
+
+export interface Usage {
+  inputTokens?: number;
+  outputTokens?: number;
+}
+
+/** What /update reports: whether a newer release exists on GitHub. */
+export interface UpdateInfo {
+  current: string;
+  latest?: string;
+  updateAvailable: boolean;
+  /** True when the companion can update itself (installed with npm, not run from source). */
+  canSelfUpdate: boolean;
+  releaseUrl: string;
+  /** Set while a self-update started from the sidebar is running or just failed. */
+  updating?: "running" | "failed";
+  message?: string;
 }
 
 export type ChatEvent =
@@ -56,7 +83,7 @@ export type ChatEvent =
   | { type: "text"; delta: string }
   | { type: "thinking"; delta: string }
   | { type: "status"; text: string }
-  | { type: "done"; usage?: Record<string, unknown> }
+  | { type: "done"; usage?: Usage }
   | { type: "error"; message: string };
 
 /** A running sign-in. The CLI opens the provider's official page; we only watch for it to finish. */

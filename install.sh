@@ -6,14 +6,15 @@
 # What it does:
 #   1. Checks for Node.js 20+ (offers to install it with Homebrew on macOS).
 #   2. Installs the AI Sidebar companion from the latest GitHub Release.
-#   3. On macOS, starts it now and at every login.
-#   4. Checks whether Claude Code and Antigravity are installed.
+#   3. Starts it now and at every login (macOS LaunchAgent, or a systemd user service on Linux).
+#   4. Checks which AI tools are installed (Claude Code, Antigravity, Codex, Ollama).
 #
 # It never asks for passwords and doesn't touch your projects.
 set -euo pipefail
 
 REPO="Juan337492/aisidebar"
-TGZ="https://github.com/${REPO}/releases/latest/download/aisidebar-companion.tgz"
+# AISIDEBAR_TGZ lets CI test a locally built package instead of the published one.
+TGZ="${AISIDEBAR_TGZ:-https://github.com/${REPO}/releases/latest/download/aisidebar-companion.tgz}"
 RELEASES="https://github.com/${REPO}/releases/latest"
 # Fallback install location when the global npm folder isn't writable without sudo.
 LOCAL_PREFIX="${AISIDEBAR_PREFIX:-$HOME/.aisidebar/node}"
@@ -59,38 +60,46 @@ echo
 bold "3/4  Start the companion"
 if [ "${AISIDEBAR_SKIP_SERVICE:-}" = "1" ]; then
   warn "Skipping auto-start (AISIDEBAR_SKIP_SERVICE=1)."
-elif [ "$(uname)" = "Darwin" ]; then
-  "$BIN" install >/dev/null
+elif "$BIN" install >/dev/null; then
   ok "Running now, and it will start automatically when you log in."
 else
-  warn "Auto-start isn't set up on Linux. Keep this running (e.g. from your startup apps):"
+  warn "Couldn't set up auto-start. Start it yourself with:"
   echo "      $BIN start"
 fi
 
 # 4. AI tools -----------------------------------------------------------------
 echo
 bold "4/4  AI tools (you need at least one)"
+found_any=""
 have_claude=""
 for c in claude "$HOME/.local/bin/claude" "$HOME/.claude/local/claude"; do
   if command -v "$c" >/dev/null 2>&1 || [ -x "$c" ]; then have_claude=1; break; fi
 done
-if [ -n "$have_claude" ]; then ok "Claude Code found (for Claude)"
+if [ -n "$have_claude" ]; then ok "Claude Code found (for Claude)"; found_any=1
 else warn "Claude Code not found. For Claude, install it: https://claude.com/product/claude-code"; fi
 
 have_agy=""
 if command -v antigravity >/dev/null 2>&1 || command -v agy >/dev/null 2>&1 || [ -d "$HOME/.t3/tools/antigravity-acp" ]; then have_agy=1; fi
-if [ -n "$have_agy" ]; then ok "Antigravity found (for Gemini)"
+if [ -n "$have_agy" ]; then ok "Antigravity found (for Gemini)"; found_any=1
 else warn "Antigravity not found. For Gemini, install it: https://antigravity.google/download"; fi
+
+if command -v codex >/dev/null 2>&1; then ok "Codex found (for ChatGPT)"; found_any=1
+else warn "Codex not found (optional). For ChatGPT: npm install -g @openai/codex"; fi
+
+if command -v ollama >/dev/null 2>&1; then ok "Ollama found (for local models)"; found_any=1
+else warn "Ollama not found (optional). For free local models: https://ollama.com/download"; fi
+[ -n "$found_any" ] || warn "Install at least one of the tools above to chat."
 
 # Done --------------------------------------------------------------------------
 echo
 bold "Done! Last steps:"
 cat <<EOF
-  1. Get the browser extension: ${RELEASES}
+  1. Get the browser extension (step-by-step guide: https://juan337492.github.io/aisidebar/)
+     from ${RELEASES}
        • Chrome: download ai-sidebar-chrome.zip, unzip it, open chrome://extensions,
          turn on Developer mode, click "Load unpacked", and pick the unzipped folder.
        • Firefox: see the instructions on that page.
   2. Open the sidebar (toolbar icon, or Alt+Shift+A) and click Connect.
-     Click Allow in the popup on your Mac.
-  3. Click "Sign in with Claude" or "Sign in with Google".
+     Click Allow in the popup that appears.
+  3. Sign in to Claude, Google or ChatGPT from the sidebar (Ollama needs no sign-in).
 EOF

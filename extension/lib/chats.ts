@@ -2,11 +2,18 @@ import { useEffect, useState } from "react";
 import { browser } from "wxt/browser";
 
 export interface Attachment {
-  kind: "page" | "selection";
+  kind: "page" | "selection" | "image";
   title?: string;
   url?: string;
+  /** Page or selection text. Empty for images, and for a page already sent earlier in the chat (see `repeat`). */
   text: string;
   truncated?: boolean;
+  /** Content hash of a page, so re-sending the same unchanged page can be skipped. */
+  hash?: string;
+  /** This page was already sent earlier in the chat and hasn't changed, so its text isn't sent again. */
+  repeat?: boolean;
+  /** Images: a data: URL (JPEG/PNG). */
+  dataUrl?: string;
 }
 
 export interface Message {
@@ -19,6 +26,7 @@ export interface Message {
   model?: string;
   effort?: string;
   error?: string;
+  usage?: { inputTokens?: number; outputTokens?: number };
   createdAt: number;
 }
 
@@ -73,6 +81,59 @@ export async function deleteAllChats(): Promise<void> {
 export async function setPinned(id: string, pinned: boolean): Promise<void> {
   const chat = await loadChat(id);
   if (chat) await saveChat({ ...chat, pinned });
+}
+
+export async function renameChat(id: string, title: string): Promise<void> {
+  const chat = await loadChat(id);
+  if (chat && title.trim()) await saveChat({ ...chat, title: title.trim() });
+}
+
+/** Full-text search: chat ids whose title, messages or attached page titles/URLs contain every word of `q`. */
+export async function searchChats(q: string): Promise<Set<string>> {
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const index = await listChats();
+  const all = await browser.storage.local.get(index.map((c) => chatKey(c.id)));
+  const hits = new Set<string>();
+  for (const meta of index) {
+    const chat = all[chatKey(meta.id)] as Chat | undefined;
+    if (!chat) continue;
+    const hay = [
+      chat.title,
+      ...chat.messages.flatMap((m) => [m.text, ...(m.attachments ?? []).flatMap((a) => [a.title ?? "", a.url ?? ""])]),
+    ]
+      .join("\n")
+      .toLowerCase();
+    if (words.every((w) => hay.includes(w))) hits.add(meta.id);
+  }
+  return hits;
+}
+
+/** The chat as a Markdown document. */
+export function chatToMarkdown(chat: Chat, modelName?: (m: Message) => string | undefined): string {
+  const lines = [`# ${chat.title}`, "", `_Exported from AI Sidebar · ${new Date(chat.updatedAt).toLocaleString()}_`, ""];
+  for (const m of chat.messages) {
+    if (m.role === "user") {
+      lines.push("## You", "");
+      for (const a of m.attachments ?? []) {
+        if (a.kind === "page") lines.push(`> 📄 [${a.title || a.url}](${a.url})`, "");
+        else if (a.kind === "image") lines.push(`> 🖼️ ${a.title ?? "Image"}`, "");
+        else lines.push(...a.text.split("\n").map((l) => `> ${l}`), "");
+      }
+      lines.push(m.text, "");
+    } else {
+      lines.push(`## ${modelName?.(m) ?? m.model ?? "Assistant"}`, "", m.text || (m.error ? `_Error: ${m.error}_` : ""), "");
+    }
+  }
+  return lines.join("\n");
+}
+
+export function downloadMarkdown(chat: Chat, modelName?: (m: Message) => string | undefined) {
+  const blob = new Blob([chatToMarkdown(chat, modelName)], { type: "text/markdown" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${chat.title.replace(/[\\/:*?"<>|]+/g, "-").slice(0, 80) || "chat"}.md`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 export function useChatList(): ChatMeta[] {

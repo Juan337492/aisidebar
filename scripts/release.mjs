@@ -8,11 +8,13 @@
 //   ai-sidebar-firefox.xpi   Firefox extension, signed by Mozilla (if extension/.output/signed has one)
 //   ai-sidebar-firefox.zip   Firefox extension, unsigned (temporary install)
 //   AI-Sidebar-Setup.cmd     Windows: double-click to run install.ps1
+//   AI-Sidebar-Setup-mac.zip macOS: unzip, then double-click (zipped so it stays executable)
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+// Tests first: never publish a release that fails them.
 const run = (cmd, args) => execFileSync(cmd, args, { stdio: ["ignore", "pipe", "inherit"], encoding: "utf8" }).trim();
 const version = JSON.parse(readFileSync("extension/package.json", "utf8")).version;
 const tag = `v${version}`;
@@ -23,6 +25,8 @@ const add = (from, name) => {
   copyFileSync(from, to);
   assets.push(to);
 };
+
+run("npm", ["test"]);
 
 // Companion
 run("npm", ["run", "build", "-w", "companion"]);
@@ -35,6 +39,10 @@ run("npm", ["run", "zip:firefox", "-w", "extension"]);
 add(`extension/.output/ai-sidebar-${version}-chrome.zip`, "ai-sidebar-chrome.zip");
 add(`extension/.output/ai-sidebar-${version}-firefox.zip`, "ai-sidebar-firefox.zip");
 add("windows/AI-Sidebar-Setup.cmd", "AI-Sidebar-Setup.cmd");
+chmodSync("mac/AI-Sidebar-Setup.command", 0o755);
+const macZip = join(out, "AI-Sidebar-Setup-mac.zip");
+run("zip", ["-j", "-q", macZip, "mac/AI-Sidebar-Setup.command"]);
+assets.push(macZip);
 const signedDir = "extension/.output/signed";
 const xpi = existsSync(signedDir) && readdirSync(signedDir).find((f) => f.endsWith(".xpi") && f.includes(version));
 if (xpi) add(join(signedDir, xpi), "ai-sidebar-firefox.xpi");

@@ -1,0 +1,43 @@
+# Publishes the install page (site/) to GitHub Pages: https://juan337492.github.io/aisidebar/
+# If the latest release has a Mozilla-signed ai-sidebar-firefox.xpi, it's published next to the page,
+# because Firefox only offers one-click install for .xpi files served from a normal web page.
+name: Install page
+
+on:
+  push:
+    branches: [main]
+    paths: [site/**, .github/workflows/pages.yml]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp -R site _site
+          gh release download --repo "$GITHUB_REPOSITORY" --pattern ai-sidebar-firefox.xpi --dir _site \
+            || echo "No signed Firefox add-on in the latest release yet."
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

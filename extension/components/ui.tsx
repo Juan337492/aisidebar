@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 
 export function IconButton({
   label,
@@ -75,4 +75,40 @@ export function timeAgo(ts: number): string {
   const h = Math.round(m / 60);
   if (h < 24) return `${h}h ago`;
   return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/**
+ * A button that asks for a second click instead of a native confirm() popup
+ * (which side panels can block or hide).
+ */
+export function ConfirmButton({
+  children,
+  confirmLabel = "Click again to confirm",
+  onConfirm,
+  className = "",
+  ...rest
+}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & { confirmLabel?: ReactNode; onConfirm: () => void }) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const t = setTimeout(() => setArmed(false), 4000);
+    return () => clearTimeout(t);
+  }, [armed]);
+  return (
+    <button
+      type="button"
+      className={className}
+      {...rest}
+      onBlur={() => setArmed(false)}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (armed) {
+          setArmed(false);
+          onConfirm();
+        } else setArmed(true);
+      }}
+    >
+      {armed ? confirmLabel : children}
+    </button>
+  );
 }

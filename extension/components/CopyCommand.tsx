@@ -11,7 +11,7 @@ export const INSTALL_CMD = IS_WINDOWS
 export const INSTALL_APP = IS_WINDOWS ? "PowerShell" : "Terminal";
 /** Windows only: double-click setup file, no typing needed. */
 export const WINDOWS_SETUP_URL = "https://github.com/Juan337492/aisidebar/releases/latest/download/AI-Sidebar-Setup.cmd";
-export const SETUP_URL = "https://github.com/Juan337492/aisidebar#install";
+export const SETUP_URL = "https://juan337492.github.io/aisidebar/";
 /** What the approval popup's confirm button is called on this OS. */
 export const ALLOW_BUTTON = IS_WINDOWS ? "Yes" : "Allow";
 

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { Adapter, ChatEvent, ChatRequest, LoginProcess, ModelOption, ProviderStatus } from "../types.ts";
 import { startAcp } from "../acp.ts";
 import { parseJson, run, streamLines, which } from "../process.ts";
+import { normalizeUsage, systemPrompt, validImages, writeImages } from "../prompt.ts";
 
 const EFFORT_ORDER = ["low", "medium", "high", "xhigh"];
 
@@ -68,6 +69,7 @@ export function antigravityAdapter(getBinaryOverride: () => string | undefined):
         installUrl: "https://antigravity.google/download",
         signInLabel: "Sign in with Google",
         canSignOut: true,
+        images: true,
       };
       if (!bin) {
         return (cached = {
@@ -153,45 +155,63 @@ export function antigravityAdapter(getBinaryOverride: () => string | undefined):
     async *chat(req: ChatRequest, signal: AbortSignal): AsyncGenerator<ChatEvent> {
       const bin = binary();
       if (!bin) throw new Error("Antigravity CLI not found.");
-      // No system-prompt flag, so instructions ride along with the first turn.
-      const prompt = req.system && !req.sessionId ? `${req.system}\n\n${req.prompt}` : req.prompt;
+      // No system-prompt flag, so the instructions ride along with the first turn of each conversation.
+      let prompt = req.sessionId ? req.prompt : `<instructions>\n${systemPrompt(req)}\n</instructions>\n\n${req.prompt}`;
+      // Its stream input only takes text, so screenshots go in as files it can open (in the empty workspace).
+      const images = writeImages(validImages(req.images));
+      if (images.paths.length) {
+        prompt =
+          `The user attached ${images.paths.length === 1 ? "an image" : "images"} for this message. ` +
+          `Open ${images.paths.length === 1 ? "it" : "them"} to see ${images.paths.length === 1 ? "it" : "them"} before answering:\n` +
+          images.paths.map((p) => `- ${p}`).join("\n") +
+          `\n\n${prompt}`;
+      }
       // The prompt goes in on stdin as one stream-json message, so page text of any size works on every OS.
       const args = ["--input-format", "stream-json", "--output-format", "stream-json", "--disable-slash-commands", "--sandbox"];
       const input = JSON.stringify({ event: "user", message: { content: prompt } }) + "\n";
       if (req.model) args.push("--model", req.effort ? `${req.model}-${req.effort}` : req.model);
       if (req.sessionId) args.push("--conversation", req.sessionId);
 
-      let sentSession = false;
-      for await (const line of streamLines(bin, args, signal, input)) {
-        const ev = parseJson(line);
-        if (!ev) continue;
-        const convId = ev.conversation_id ?? ev.step_update?.conversation_id ?? ev.result?.conversation_id;
-        if (!sentSession && typeof convId === "string") {
-          sentSession = true;
-          yield { type: "session", id: convId };
-        }
-        if (ev.event === "step_update") {
-          const s = ev.step_update ?? {};
-          if (s.step_type === "agent_response") {
-            if (s.thinking_delta) yield { type: "thinking", delta: s.thinking_delta };
-            if (s.text_delta) yield { type: "text", delta: s.text_delta };
-          } else if (s.state === "ACTIVE" && s.step_type && s.step_type !== "user_input") {
-            yield { type: "status", text: String(s.step_type).replace(/_/g, " ") };
-          }
-        } else if (ev.event === "result") {
-          const r = ev.result ?? {};
-          if (r.status && r.status !== "SUCCESS") {
-            yield { type: "error", message: String(r.error ?? r.response ?? `Antigravity: ${r.status}`) };
-          } else {
-            yield { type: "done", usage: r.usage };
-          }
-          return;
-        } else if (ev.event === "error") {
-          yield { type: "error", message: String(ev.error?.message ?? ev.message ?? "Antigravity error") };
-          return;
-        }
+      try {
+        yield* streamEvents(bin, args, signal, input);
+      } finally {
+        images.cleanup();
       }
-      yield { type: "done" };
     },
   };
+}
+
+/** Turns Antigravity's stream-json output into sidebar chat events. */
+async function* streamEvents(bin: string, args: string[], signal: AbortSignal, input: string): AsyncGenerator<ChatEvent> {
+  let sentSession = false;
+  for await (const line of streamLines(bin, args, signal, input)) {
+    const ev = parseJson(line);
+    if (!ev) continue;
+    const convId = ev.conversation_id ?? ev.step_update?.conversation_id ?? ev.result?.conversation_id;
+    if (!sentSession && typeof convId === "string" && convId) {
+      sentSession = true;
+      yield { type: "session", id: convId };
+    }
+    if (ev.event === "step_update") {
+      const s = ev.step_update ?? {};
+      if (s.step_type === "agent_response") {
+        if (s.thinking_delta) yield { type: "thinking", delta: s.thinking_delta };
+        if (s.text_delta) yield { type: "text", delta: s.text_delta };
+      } else if (s.state === "ACTIVE" && s.step_type && s.step_type !== "user_input") {
+        yield { type: "status", text: s.step_type === "tool" ? "working" : String(s.step_type).replace(/_/g, " ") };
+      }
+    } else if (ev.event === "result") {
+      const r = ev.result ?? {};
+      if (r.status && r.status !== "SUCCESS") {
+        yield { type: "error", message: String(r.error ?? r.response ?? `Antigravity: ${r.status}`) };
+      } else {
+        yield { type: "done", usage: normalizeUsage(r.usage) };
+      }
+      return;
+    } else if (ev.event === "error") {
+      yield { type: "error", message: String(ev.error?.message ?? ev.message ?? "Antigravity error") };
+      return;
+    }
+  }
+  yield { type: "done" };
 }
