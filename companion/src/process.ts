@@ -14,7 +14,7 @@ export function searchPath(): string[] {
     ? [
         join(home, ".local", "bin"), // Claude Code native installer
         process.env.APPDATA && join(process.env.APPDATA, "npm"), // npm global installs
-        process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "Programs", "Antigravity", "bin"),
+        process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "agy", "bin"), // Antigravity CLI installer
         process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "Microsoft", "WinGet", "Links"),
       ]
     : [join(home, ".local", "bin"), join(home, ".claude", "local"), "/opt/homebrew/bin", "/usr/local/bin"];

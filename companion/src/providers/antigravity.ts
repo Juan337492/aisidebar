@@ -3,19 +3,21 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Adapter, ChatEvent, ChatRequest, LoginProcess, ModelOption, ProviderStatus } from "../types.ts";
 import { startAcp } from "../acp.ts";
-import { parseJson, run, streamLines, which } from "../process.ts";
+import { IS_WINDOWS, isExecutable, parseJson, run, streamLines, which } from "../process.ts";
 import { normalizeUsage, systemPrompt, validImages, writeImages } from "../prompt.ts";
 
 const EFFORT_ORDER = ["low", "medium", "high", "xhigh"];
 
 /** Antigravity's CLI as installed by T3 Code, if it isn't on PATH. */
-function t3Binary(): string | undefined {
+export function t3Binary(home = homedir()): string | undefined {
   try {
-    const dir = join(homedir(), ".t3", "tools", "antigravity-acp", `${process.platform}-${process.arch}`);
+    const dir = join(home, ".t3", "tools", "antigravity-acp", `${process.platform}-${process.arch}`);
     const { releaseId } = JSON.parse(readFileSync(join(dir, "active.json"), "utf8"));
-    const bin = join(dir, "versions", releaseId, process.platform === "win32" ? "antigravity.exe" : "antigravity");
-    readFileSync(join(dir, "versions", releaseId, ".install-complete.json"));
-    return bin;
+    const done = JSON.parse(readFileSync(join(dir, "versions", releaseId, ".install-complete.json"), "utf8"));
+    // The file name differs between platforms and releases, so use the one the install recorded.
+    const names = [done?.executable?.name, "antigravity", "agy"].filter((n): n is string => typeof n === "string" && !!n);
+    const files = names.flatMap((n) => (IS_WINDOWS && !/\.exe$/i.test(n) ? [`${n}.exe`, n] : [n]));
+    return files.map((f) => join(dir, "versions", releaseId, f)).find(isExecutable);
   } catch {
     return undefined;
   }
@@ -50,7 +52,7 @@ export function parseModels(stdout: string): ModelOption[] {
 /** Uses Google Antigravity's CLI, signed in with your Google account (Gemini subscription). */
 export function antigravityAdapter(getBinaryOverride: () => string | undefined): Adapter {
   let cached: { at: number; value: ProviderStatus } | undefined;
-  const binary = () => getBinaryOverride() ?? which("antigravity") ?? which("agy") ?? t3Binary();
+  const binary = () => getBinaryOverride() ?? which("agy") ?? which("antigravity") ?? t3Binary();
 
   return {
     id: "antigravity",
@@ -76,7 +78,9 @@ export function antigravityAdapter(getBinaryOverride: () => string | undefined):
           at: Date.now(),
           value: {
             ...base,
-            message: "Antigravity CLI not found. Install Antigravity (or enable it in T3 Code), or set its path in ~/.aisidebar/config.json.",
+            message: IS_WINDOWS
+              ? "Antigravity CLI (agy) not found. The desktop app doesn't include it: in PowerShell run  irm https://antigravity.google/cli/install.ps1 | iex  then click the refresh button next to Providers."
+              : "Antigravity CLI (agy) not found. The desktop app doesn't include it: in a terminal run  curl -fsSL https://antigravity.google/cli/install.sh | bash  then click the refresh button next to Providers.",
           },
         }).value;
       }

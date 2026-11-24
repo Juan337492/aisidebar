@@ -16,7 +16,7 @@ ChatGPT Plus/Pro) or free models on your own computer via Ollama. No API keys.
 
 **You need:** a Mac, Windows or Linux computer, and at least one of:
 [Claude Code](https://claude.com/product/claude-code) (for Claude),
-[Antigravity](https://antigravity.google/download) (for Gemini),
+[Antigravity CLI](https://antigravity.google/download) (`agy`, for Gemini; the desktop app alone isn't enough),
 [Codex](https://developers.openai.com/codex/cli) (for ChatGPT: `npm install -g @openai/codex`) or
 [Ollama](https://ollama.com/download) (free local models, no account).
 
